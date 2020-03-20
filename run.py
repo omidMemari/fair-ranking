@@ -22,7 +22,7 @@ Y_test  = test.data[1][:20]  #test.data[1][:20]
 #print(list(df.columns.values))
 
 lambdas_list = [1e-2, 1e-1]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
-gammas_list = [500, 1000, 2000]#[1e-2, 1e-1, 1e0, 1e1, 1e2]
+gammas_list = [1000, 2000]#[1e-2, 1e-1, 1e0, 1e1, 1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
 kf = 1 #5 # k-fold
