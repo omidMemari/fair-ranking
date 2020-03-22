@@ -10,7 +10,7 @@ from baselines import *
 
 #vvector = lambda N: 1. / np.log2(2 + np.arange(N))
 
-def ranking_q_object(q_init, X, lamda, mu, gamma, theta):
+def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, theta):
 
     print("test.py: ranking_q_object")
     #print("q_init: ", q_init)
@@ -34,7 +34,7 @@ def ranking_q_object(q_init, X, lamda, mu, gamma, theta):
 
     v = [1/math.log(1+j, 2) for j in range(1, nn+1)] # q: 500*25, v: 25*1
 
-    P = minP(q,fc,alpha,v, mu) # P: 500*25*25
+    P = minP(q,fc ,alpha ,v ,mu) # P: 500*25*25
 
     Pv = np.matmul(P, v) # Pv: 500*25, P: 500*25*25, v:25*1
     qPv = np.dot(q.flatten(), Pv.flatten())
@@ -56,18 +56,18 @@ def ranking_q_object(q_init, X, lamda, mu, gamma, theta):
     print("alpha * fPv: ", np.dot(alpha, fPv)/nc)
     print("mu/2*||P||: ",(mu/2) *np.dot(P.flatten(), P.flatten())/nc)
     print("mu/2*||q||: ",(mu/2) *np.dot(q.flatten(), q.flatten())/nc)
-    print("lamda/2*||theta||: ",(lamda/2) *np.dot(theta, theta))
-    print("gamma/2*||alpha||: ",(gamma/2) *np.dot(alpha, alpha))
+    print("gamma/2*||theta||: ",(gamma/2) *np.dot(theta, theta))
+    print("lambda/2*||alpha||: ",(lambda_group_fairness/2) *np.dot(alpha, alpha))
     obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
     obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
     #  regularization
-    obj = obj + (gamma/2) * np.dot(alpha, alpha)
+    obj = obj + (lambda_group_fairness/2) * np.dot(alpha, alpha)
     obj = obj / nc
-    obj = obj + (lamda/2) * np.dot(theta, theta)
+    obj = obj + (gamma/2) * np.dot(theta, theta)
 
     # gradient??? add alpha to it
     gr_q = np.array((Pv + PSI + mu*q)/nc) # I think we don't need nc!! Gr:500*25,  Gr[i]: 25*1, q[i]: 25*1
-    gr_alpha = np.array((fPv + gamma*alpha)/nc) # fPv: 500*1, alpha: 500*1, Gr_alpha: 500*1, [Gr, Gr_alpha]: 500*26
+    gr_alpha = np.array((fPv + lambda_group_fairness*alpha)/nc) # fPv: 500*1, alpha: 500*1, Gr_alpha: 500*1, [Gr, Gr_alpha]: 500*26
     gr_alpha = np.reshape(gr_alpha, (-1, 1)) # convert 1*500 to 500*1
     gr_new = np.array([np.append(gr_q[i] , gr_alpha[i]) for i in range(len(gr_q))])
     g = gr_new.flatten()
@@ -174,9 +174,16 @@ def evaluate(P, x, u, vvector, group_feat_id):
     return np.mean(test_ndcgs), np.mean(test_losses)
     #plt_data[j] = [np.mean(test_ndcgs), np.mean(test_losses)]
 
-def testAdvarsarialRanking(x, u, lamda, mu, gamma, theta):
-
-    group_feat_id = 4
+def testAdvarsarialRanking(x ,u , model, args):
+    
+    theta = model["theta"]
+    lambda_group_fairness = args.lambda_group_fairness
+    gamma = args.gamma
+    mu = args.mu
+    #x, u = data_reader
+    #x = vdr[0]
+    #u = vdr[1]
+    group_feat_id = args.group_feat_id
     nc,nn,nf = np.shape(x)
     q_alpha_init = np.random.random(nc*(nn+1)) # 500*(25+1) because we added alpha to q
     #print("q_init", q_init)
@@ -188,7 +195,7 @@ def testAdvarsarialRanking(x, u, lamda, mu, gamma, theta):
     #print("lb", bound)
 
     #print(np.shape(q_init),np.shape(lb),np.shape(ub))
-    optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, lamda, mu, gamma, theta), method='L-BFGS-B', jac=True,  bounds=bd)
+    optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, gamma, mu, lambda_group_fairness, theta), method='L-BFGS-B', jac=True,  bounds=bd)
     #print(optim)
     
     
@@ -227,6 +234,10 @@ def testAdvarsarialRanking(x, u, lamda, mu, gamma, theta):
     ndcg, fair_loss = evaluate(P_optimal, x,  u, vvector(nn), group_feat_id)
     print("ndcg: ", ndcg)
     print("fair_loss: ", fair_loss)
-    return ndcg, fair_loss #sum(U)/len(U)
+    result = {
+        "ndcg": ndcg,
+        "fair_loss": fair_loss
+    }
+    return result #sum(U)/len(U)
     
     
