@@ -35,37 +35,29 @@ args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate
                  group_fairness_version="asym_disparity",early_stopping=False, lr_scheduler=False, 
                  validation_deterministic=False, evalk=1000, reward_type="ndcg", baseline_type="value", 
                  use_baseline=True, entreg_decay=0.0, skip_zero_relevance=True, eval_temperature=1.0, optimizer="Adam",
-                clamp=False)
+               clamp=False)
 torch.set_num_threads(args.num_cores)
 args.progressbar = False 
 
 args.group_feat_id = 4
 args.mu = 1e-2
 
-dr_x = np.array(dr.data[0][:20])
-dr_y = np.array(dr.data[1][:20])
-vdr_x = np.array(vdr.data[0][:20])
-vdr_y = np.array(vdr.data[1][:20])
+dr_x = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf = np.shape(dr_x)
 
-#X_train = dr.data[0][:2] #train.data[0][:20]
-#Y_train = dr.data[1][:2] #train.data[1][:20]
-#X_test  = vdr.data[0][:2]  #test.data[0][:20]
-#Y_test  = vdr.data[1][:2]  #test.data[1][:20]
-
-lamdas_list = [1000, 2000]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
-gammas_list = [1e-1]#[1e-2, 1e-1, 1e0, 1e1, 1e2]
+lamdas_list = [500 ,1000, 2000, 3000, 4000]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
-kf = 1 #5 # k-fold
 mu = 1e-2 # No need to change?
 
-#lamda = 0.01
-#gamma = 2000
 n_splits = 3
 
-def myfunc(data):
+def train_func(data):
     
     lamda, gamma = data
     args.lambda_group_fairness = lamda
@@ -87,10 +79,30 @@ def myfunc(data):
  
     return lamda, gamma, cv_ndcg, cv_fair_loss, cv_theta
 
-def parallel_runs(data_list): 
-    pool = multiprocessing.Pool(processes=4)
+def test_func(data):
+
+    lamda = data[0][0]
+    gamma = data[0][1][0]
+    theta = data[0][1][3]
+    args.lambda_group_fairness = lamda
+    args.gamma = gamma
+    model = {"theta": theta }
+    results = testAdvarsarialRanking(vdr_x ,vdr_y , model, args=args)
+    return lamda, results["ndcg"], results["fair_loss"]
+
+def parallel_runs(data_list):
+    ls = []
+    pool = multiprocessing.Pool(processes=54)
     #prod_x=partial(prod_xy, y=10) # prod_x has only one argument x (y is fixed to 10)
-    result_list = pool.map(myfunc, data_list)
+    result_list = pool.map(train_func, data_list)
+    res = {key : [result_list[idx][1:5]
+      for idx in range(len(result_list)) if result_list[idx][0]== key]
+      for key in set([x[0] for x in result_list])}
+    for key, values in res.items():
+        ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][1]==max([x[1] for x in values])])
+   
+    pool = multiprocessing.Pool(processes=54)
+    result_list = pool.map(test_func, ls)
     print(result_list)
 
 
