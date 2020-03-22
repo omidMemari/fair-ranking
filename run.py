@@ -42,10 +42,10 @@ args.progressbar = False
 args.group_feat_id = 4
 args.mu = 1e-2
 
-dr_x = np.array(dr.data[0][:20])
-dr_y = np.array(dr.data[1][:20])
-vdr_x = np.array(vdr.data[0][:20])
-vdr_y = np.array(vdr.data[1][:20])
+dr_x = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf = np.shape(dr_x)
 
