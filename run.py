@@ -9,7 +9,13 @@ import pickle as pkl
 import torch
 import itertools
 from sklearn.model_selection import KFold
+import time
 
+start = time.time()
+# run your code
+#end = time.time()
+
+#elapsed = end - start
 
 dr = YahooDataReader(None)
 dr.data = pkl.load(open("GermanCredit/german_train_rank_3.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
@@ -34,10 +40,10 @@ args.progressbar = False
 args.group_feat_id = 4
 args.mu = 1e-2
 
-dr_x = np.array(dr.data[0][:10])
-dr_y = np.array(dr.data[1][:10])
-vdr_x = np.array(vdr.data[0][:10])
-vdr_y = np.array(vdr.data[1][:10])
+dr_x = np.array(dr.data[0][:20])
+dr_y = np.array(dr.data[1][:20])
+vdr_x = np.array(vdr.data[0][:20])
+vdr_y = np.array(vdr.data[1][:20])
 
 nc,nn,nf = np.shape(dr_x)
 
@@ -111,7 +117,10 @@ for i, lamda in enumerate(lamdas_list):
         #plt_data_pl[i] = [results["ndcg"], results["avg_group_asym_disparity"]]
         plt_data_pl[i] = [results["ndcg"], results["fair_loss"]]
         print("ndcg: {}, fair_loss: {}, lamda: {}, gamma: {}".format(results["ndcg"], results["fair_loss"], lamda, best_gamma))
-        
+ 
+end = time.time()
+elapsed = end - start
+print("time: ", elapsed)
         #model = on_policy_training(dr, vdr, model, args=args)
         #if i == 0:
         #    results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
