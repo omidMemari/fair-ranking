@@ -70,9 +70,9 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness):
     
 
 def fairnessConstraint(x): # seems f is okay, f: 500*25
-    g1 = [sum(x[i][:][4]) for i in range(len(x))] # |G_1| for each ranking sample
+    g1 = [sum(x[i][:][3]) for i in range(len(x))] # |G_1| for each ranking sample
     g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample
-    f = [[int(x[i][j][4] == 0)/g0[i] - int(x[i][j][4] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
+    f = [[int(x[i][j][3] == 0)/g0[i] - int(x[i][j][3] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
     f = np.array(f)
     print("train.py: fairnessConstraint")
     #scipy.io.savemat('data4.mat', dict(f=f))
