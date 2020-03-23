@@ -76,6 +76,30 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, theta):
 
     return obj, g
 
+#if group_fairness_evaluation:
+#            rel_mean_g0 = np.mean(rel[group_identities == 0])
+#            rel_mean_g1 = np.mean(rel[group_identities == 1])
+#            # skip for candidate sets when there is no diversity
+#            if (np.sum(group_identities == 0) == 0
+#                    or np.sum(group_identities == 1) == 0
+#                ) or rel_mean_g0 == 0 or rel_mean_g1 == 0:
+#                # print(group_identities, rel)
+#                group_exposure_disparities.append(0.0)
+#                group_asym_disparities.append(0.0)
+#                # if there is only one group
+#            else:
+#                exposure_mean_g0 = np.mean(exposures[group_identities == 0])
+#                exposure_mean_g1 = np.mean(exposures[group_identities == 1])
+#                # print(exposure_mean_g0, exposure_mean_g1)
+#                disparity = exposure_mean_g0 / rel_mean_g0 - exposure_mean_g1 / rel_mean_g1
+#                group_exposure_disparity = disparity**2
+#                sign = +1 if rel_mean_g0 > rel_mean_g1 else -1
+#                one_sided_group_disparity = max([0, sign * disparity])
+#
+#                # print(group_exposure_disparity, exposure_mean_g0,
+#                # exposure_mean_g1, rel, group_identities)
+#                group_exposure_disparities.append(group_exposure_disparity)
+#                group_asym_disparities.append(one_sided_group_disparity)
 
 def fairnessConstraint(x): # seems f is okay, f: 500*25
     g1 = [sum(x[i][:][3]) for i in range(len(x))] # |G_1| for each ranking sample
