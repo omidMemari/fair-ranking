@@ -44,7 +44,7 @@ from evaluation import evaluate_model
 # plt.rcParams['text.latex.preamble'] = r"\usepackage{subdepth}, \usepackage{type1cm}"
 #####################################################################################
 
-start = time.time()
+
 # run your code
 #end = time.time()
 
@@ -138,6 +138,44 @@ def parallel_runs(data_list):
     sorted_result = sorted(result_list, key=lambda x: x[0])
     return sorted_result
 
+#############################################################
+
+def policy_learning():
+    args.group_feat_id = 3
+    model_params_list = []
+    lambdas_list = [0.0, 10.0]#[0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+    plt_data_pl = np.zeros((len(lambdas_list)+1, 2))
+    for i, lgroup in enumerate(lambdas_list):
+            torch.set_num_threads(args.num_cores)
+            args.lambda_reward = 1.0
+            args.lambda_ind_fairness = 0.0
+            args.lambda_group_fairness = lgroup
+
+            args.lr = 0.001
+            args.epochs = 10
+            args.progressbar = False
+            args.weight_decay = 0.0
+            args.sample_size = 25
+            args.optimizer = "Adam"
+
+            model = LinearModel(D=args.input_dim)
+
+            model = on_policy_training(dr, vdr, model, args=args)
+            if i == 0:
+                results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
+                                     deterministic=True, args=args, num_sample_per_query=20)
+                print(results)
+                plt_data_pl[0] = [results["ndcg"], results["avg_group_asym_disparity"]]
+            results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
+                                     deterministic=False, args=args, num_sample_per_query=20)
+            print(results)
+            model_params_list.append(model.w.weight.data.tolist()[0])
+            print("Learnt model for lambda={} has model weights as {}".format(lgroup, model_params_list[-1]))
+            plt_data_pl[i+1] = [results["ndcg"], results["avg_group_asym_disparity"]]
+    return plt_data_pl
+
+###############################################################
+
 def ndcg_vs_disparity_plot(plt_data_mats, names, join=False, ranges=None):
     plt.figure(figsize=(6.5, 4))
     if ranges:
@@ -165,52 +203,32 @@ def ndcg_vs_disparity_plot(plt_data_mats, names, join=False, ranges=None):
     plt.grid()
     plt.savefig('./plots/german_tradeoff.pdf', bbox_inches='tight')
     plt.show()
-
+    
+###########################################################################################
+start_adv = time.time()
 data_list = list(itertools.product(lamdas_list, gammas_list))
 adv_result = parallel_runs(data_list)
-plt_data_adv = [[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))]
+plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
+end_adv = time.time()
+plt_data_pl = policy_learning()
+end_policy = time.time()
+
+
+#plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
+#plt_data_pl = np.array([[0.93654663, 0.02231645], [0.92797832, 0.01746921], [0.84281633, 0.00131007]])
 print("plt_data_adv: ", plt_data_adv)
-#############################################################
-args.group_feat_id = 3
-model_params_list = []
-lambdas_list = [10.0, 20.0]#[0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
-plt_data_pl = np.zeros((len(lambdas_list)+1, 2))
-for i, lgroup in enumerate(lambdas_list):
-        torch.set_num_threads(args.num_cores)
-        args.lambda_reward = 1.0
-        args.lambda_ind_fairness = 0.0
-        args.lambda_group_fairness = lgroup
-        
-        args.lr = 0.001
-        args.epochs = 10
-        args.progressbar = False
-        args.weight_decay = 0.0
-        args.sample_size = 25
-        args.optimizer = "Adam"
-
-        model = LinearModel(D=args.input_dim)
-
-        model = on_policy_training(dr, vdr, model, args=args)
-        if i == 0:
-            results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
-                                 deterministic=True, args=args, num_sample_per_query=20)
-            print(results)
-            plt_data_pl[0] = [results["ndcg"], results["avg_group_asym_disparity"]]
-        results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
-                                 deterministic=False, args=args, num_sample_per_query=20)
-        print(results)
-        model_params_list.append(model.w.weight.data.tolist()[0])
-        print("Learnt model for lambda={} has model weights as {}".format(lgroup, model_params_list[-1]))
-        plt_data_pl[i+1] = [results["ndcg"], results["avg_group_asym_disparity"]]
-
-###############################################################
+print("plt_data_pl: ", plt_data_pl)
 
 ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl], ["Robust_Fair ($\lambda \in [0, 0.2]$)",
                       "Policy_Ranking($\lambda \in [0,100]$ )"], join=True, ranges=[[0.60, 0.85], [0.00, 0.054]])
 
 
 end = time.time()
-elapsed = end - start
-print("time: ", elapsed)
+elapsed_adv = end_adv - start_adv
+elapsed_policy = end_policy - end_adv
+print("time for Robust_Fair: ", elapsed_adv)
+print("time for Policy_Learning: ", elapsed_policy)
+
+
 
 
