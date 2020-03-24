@@ -59,7 +59,7 @@ best_lamda = -1.0
 best_ndcg = -1.0
 mu = 1e-2 # No need to change?
 
-n_splits = 3
+n_splits = 10
 
 def train_func(data):
     
@@ -251,8 +251,8 @@ def ndcg_vs_disparity_plot(plt_data_mats, names, join=False, ranges=None, filena
 ###########################################################################################
 start_adv = time.time()
 data_list = list(itertools.product(lamdas_list, gammas_list))
-##adv_result = parallel_runs(data_list)
-##plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
+adv_result = parallel_runs(data_list)
+plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
 end_adv = time.time()
 #################################################################################
 policy_result = policy_learning()
@@ -262,7 +262,7 @@ end_policy = time.time()
 plt_data_z = zehlike()
 end_zehlike = time.time()
 ###################################################################################
-plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
+#plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
 #plt_data_pl = np.array([[0.93654663, 0.02231645], [0.92797832, 0.01746921], [0.84281633, 0.00131007]])
 
 print("plt_data_adv: ", plt_data_adv)
