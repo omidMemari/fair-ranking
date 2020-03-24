@@ -34,7 +34,7 @@ class Namespace:
         self.__dict__.update(kwargs)
 args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate_interval=250, input_dim=29, 
                  eval_rank_limit=1000,
-                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=8,
+                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=54,
                 pooling='concat_avg', dropout=0.0, hidden_layer=8, summary_writing=False, 
                  group_fairness_version="asym_disparity",early_stopping=False, lr_scheduler=False, 
                  validation_deterministic=False, evalk=1000, reward_type="ndcg", baseline_type="value", 
