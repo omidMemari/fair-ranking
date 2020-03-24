@@ -51,9 +51,9 @@ from evaluation import evaluate_model
 #elapsed = end - start
 
 dr = YahooDataReader(None)
-dr.data = pkl.load(open("GermanCredit/german_train_rank_3.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
+dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
 vdr = YahooDataReader(None)
-vdr.data = pkl.load(open("GermanCredit/german_test_rank_3.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
+vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
 
 
 class Namespace:
@@ -61,7 +61,7 @@ class Namespace:
         self.__dict__.update(kwargs)
 args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate_interval=250, input_dim=29, 
                  eval_rank_limit=1000,
-                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=54,
+                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=1,
                 pooling='concat_avg', dropout=0.0, hidden_layer=8, summary_writing=False, 
                  group_fairness_version="asym_disparity",early_stopping=False, lr_scheduler=False, 
                  validation_deterministic=False, evalk=1000, reward_type="ndcg", baseline_type="value", 
@@ -197,7 +197,7 @@ def zehlike():
                 args=args,
                 num_sample_per_query=100)
         plt_data_z.append([results["ndcg"], results["avg_group_asym_disparity"]])
-        ndcg_mat[i, 0], disparities_mat[i,0] = results["ndcg"], results["avg_group_asym_disparity"]     
+        ndcg_mat[i, 0], disparities_mat[i,0] = results["ndcg"], results["avg_group_asym_disparity"]
     return np.array(plt_data_z)
 ###############################################################
 
@@ -233,18 +233,18 @@ def ndcg_vs_disparity_plot(plt_data_mats, names, join=False, ranges=None, filena
 ###########################################################################################
 start_adv = time.time()
 data_list = list(itertools.product(lamdas_list, gammas_list))
-adv_result = parallel_runs(data_list)
-plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
+###adv_result = parallel_runs(data_list)
+###plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
 end_adv = time.time()
 #################################################################################
-plt_data_pl = policy_learning()
+###plt_data_pl = policy_learning()
 end_policy = time.time()
 ##################################################################################
 plt_data_z = zehlike()
 end_zehlike = time.time()
 ###################################################################################
-#plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
-#plt_data_pl = np.array([[0.93654663, 0.02231645], [0.92797832, 0.01746921], [0.84281633, 0.00131007]])
+plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
+plt_data_pl = np.array([[0.93654663, 0.02231645], [0.92797832, 0.01746921], [0.84281633, 0.00131007]])
 
 print("plt_data_adv: ", plt_data_adv)
 print("plt_data_pl: ", plt_data_pl)
