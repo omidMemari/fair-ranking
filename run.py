@@ -116,6 +116,8 @@ def parallel_runs(data_list):
 def policy_parallel(data): # run policy code in parallel using multiple cores 
     
     lamda = data
+    args.group_feat_id = 3
+    model_params_list = []
     args.lambda_group_fairness = lamda
     args.lambda_reward = 1.0
     args.lambda_ind_fairness = 0.0
@@ -132,15 +134,15 @@ def policy_parallel(data): # run policy code in parallel using multiple cores
         results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
                              deterministic=True, args=args, num_sample_per_query=20)
         print(results)
-        plt_data_pl = [results["ndcg"], results["avg_group_asym_disparity"]]
+        #plt_data_pl = [results["ndcg"], results["avg_group_asym_disparity"]]
     else: # changed by me! for lamda == 0 there were 2 outputs 
         results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
                                  deterministic=False, args=args, num_sample_per_query=20)
         print(results)
         print("Lambda: ", lamda)
         model_params_list.append(model.w.weight.data.tolist()[0])
-        print("Learnt model for lambda={} has model weights as {}".format(lgroup, model_params_list[-1]))
-        plt_data_pl = [results["ndcg"], results["avg_group_asym_disparity"]]
+        print("Learnt model for lambda={} has model weights as {}".format(lamda, model_params_list[-1]))
+        #plt_data_pl = [results["ndcg"], results["avg_group_asym_disparity"]]
     
     return lamda, results["ndcg"], results["avg_group_asym_disparity"]
 
