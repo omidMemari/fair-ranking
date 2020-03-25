@@ -53,13 +53,13 @@ vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf = np.shape(dr_x)
 
-lamdas_list = [0.1, 1, 10, 100, 500 ,1000, 2000, 3000, 5000, 10000]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
-gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2]
+lamdas_list = [0, 1000, 5000, 10000, 100000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4]
 best_lamda = -1.0
 best_ndcg = -1.0
 mu = 1e-2 # No need to change?
 
-n_splits = 10
+n_splits = 3
 
 def train_func(data):
     
