@@ -99,7 +99,6 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, theta):
 #                group_exposure_disparity = disparity**2
 #                sign = +1 if rel_mean_g0 > rel_mean_g1 else -1
 #                one_sided_group_disparity = max([0, sign * disparity])
-#
 #                # print(group_exposure_disparity, exposure_mean_g0,
 #                # exposure_mean_g1, rel, group_identities)
 #                group_exposure_disparities.append(group_exposure_disparity)
@@ -113,6 +112,8 @@ def fairnessConstraint(x): # seems f is okay, f: 500*25
     print("test.py: fairnessConstraint")
     #scipy.io.savemat('data4.mat', dict(f=f))
     return f
+
+
 
 def minP(q,f,alpha,v, mu): # P: 500*25*25
     # Find optimal P
@@ -218,7 +219,11 @@ def testAdvarsarialRanking(x ,u , model, args):
     #print("q_init", q_init)
 
 
-    bd = [(0.0,1.0)]*nc*(nn+1) # change it! so alpha can be flexible
+    #bd = [(0.0,1.0)]*nc*(nn+1) # change it! so alpha can be flexible
+    bd =[(0.0,1.0)]*nn
+    bd.append((None, None))
+    bd = bd*nc
+    print("bd: ", bd)
     #lb = list(np.zeros(nc*nn))
     #ub = list(np.ones(nc*nn))
     #print("lb", bound)

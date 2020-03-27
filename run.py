@@ -34,7 +34,7 @@ class Namespace:
         self.__dict__.update(kwargs)
 args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate_interval=250, input_dim=29, 
                  eval_rank_limit=1000,
-                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=1,
+                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=54,
                 pooling='concat_avg', dropout=0.0, hidden_layer=8, summary_writing=False, 
                  group_fairness_version="asym_disparity",early_stopping=False, lr_scheduler=False, 
                  validation_deterministic=False, evalk=1000, reward_type="ndcg", baseline_type="value", 
@@ -46,15 +46,15 @@ args.progressbar = False
 args.group_feat_id = 3
 args.mu = 1e-2
 
-dr_x = np.array(dr.data[0][:10])
-dr_y = np.array(dr.data[1][:10])
-vdr_x = np.array(vdr.data[0][:10])
-vdr_y = np.array(vdr.data[1][:10])
+dr_x = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf = np.shape(dr_x)
-print("np.shape(dr_x): ",np.shape(dr_x))
+#print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [100000000000]#[0, 1000, 5000, 10000, 100000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+lamdas_list = [0.0, 0.1, 1.0, 10.0, 20.0, 50.0, 100.0, 200, 500, 1000, 2000, 5000, 10000]
 gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4]
 best_lamda = -1.0
 best_ndcg = -1.0

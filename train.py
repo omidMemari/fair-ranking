@@ -152,7 +152,11 @@ def trainAdversarialRanking(x, u, args):
     #print("q_init", q_init)
     
     
-    bd = [(0.0,1.0)]*nc*(nn+1) # change it! alpha should be flexible
+    #bd = [(0.0,1.0)]*nc*(nn+1) # change it! alpha should be flexible
+    bd =[(0.0,1.0)]*nn
+    bd.append((None, None))
+    bd = bd*nc
+    print("bd: ", bd)
     #lb = list(np.zeros(nc*nn))
     #ub = list(np.ones(nc*nn))
     #print("lb", bound)
