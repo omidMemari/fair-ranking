@@ -24,9 +24,9 @@ from evaluation import evaluate_model
 
 
 dr = YahooDataReader(None)
-dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
+dr.data = pkl.load(open("GermanCredit/german_train_rank_3.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
 vdr = YahooDataReader(None)
-vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
+vdr.data = pkl.load(open("GermanCredit/german_test_rank_3.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
 
 
 class Namespace:
@@ -34,7 +34,7 @@ class Namespace:
         self.__dict__.update(kwargs)
 args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate_interval=250, input_dim=29, 
                  eval_rank_limit=1000,
-                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=54,
+                fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=1,
                 pooling='concat_avg', dropout=0.0, hidden_layer=8, summary_writing=False, 
                  group_fairness_version="asym_disparity",early_stopping=False, lr_scheduler=False, 
                  validation_deterministic=False, evalk=1000, reward_type="ndcg", baseline_type="value", 
@@ -46,14 +46,15 @@ args.progressbar = False
 args.group_feat_id = 3
 args.mu = 1e-2
 
-dr_x = np.array(dr.data[0])
-dr_y = np.array(dr.data[1])
-vdr_x = np.array(vdr.data[0])
-vdr_y = np.array(vdr.data[1])
+dr_x = np.array(dr.data[0][:10])
+dr_y = np.array(dr.data[1][:10])
+vdr_x = np.array(vdr.data[0][:10])
+vdr_y = np.array(vdr.data[1][:10])
 
 nc,nn,nf = np.shape(dr_x)
+print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0, 1000, 5000, 10000, 100000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+lamdas_list = [100000000000]#[0, 1000, 5000, 10000, 100000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000]#[1e-3, 1e-2, 1e-1, 1e0, 1e1] #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
 gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4]
 best_lamda = -1.0
 best_ndcg = -1.0
@@ -125,7 +126,7 @@ def policy_parallel(data): # run policy code in parallel using multiple cores
     args.epochs = 10
     args.progressbar = False
     args.weight_decay = 0.0
-    args.sample_size = 25
+    args.sample_size = 25 #### 10
     args.optimizer = "Adam"
     
     model = LinearModel(D=args.input_dim)

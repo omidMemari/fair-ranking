@@ -27,6 +27,9 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, theta):
     #rs = len(q_alpha[0]) - 1 # each ranking problem is in size of 25. q_alpha: 500*26, q: 500*25
     q = np.array([q_alpha[i][:nn] for i in range(len(q_alpha))])
     alpha = np.array([q_alpha[i][nn] for i in range(len(q_alpha))])
+    print("q_alpha shape: ", np.shape(q_alpha))
+    print("q shape: ", np.shape(q))
+    print("alpha shape: ", np.shape(alpha))
 
     fc = fairnessConstraint(X)
     #get the optimal tetha & P given Q
@@ -57,6 +60,7 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, theta):
     print("mu/2*||P||: ",(mu/2) *np.dot(P.flatten(), P.flatten())/nc)
     print("mu/2*||q||: ",(mu/2) *np.dot(q.flatten(), q.flatten())/nc)
     print("gamma/2*||theta||: ",(gamma/2) *np.dot(theta, theta))
+    print("alpha: ", alpha)
     print("lambda/2*||alpha||: ",(lambda_group_fairness/2) *np.dot(alpha, alpha))
     obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
     obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
@@ -209,6 +213,7 @@ def testAdvarsarialRanking(x ,u , model, args):
     #u = vdr[1]
     group_feat_id = args.group_feat_id
     nc,nn,nf = np.shape(x)
+    print("x shape: ", np.shape(x))
     q_alpha_init = np.random.random(nc*(nn+1)) # 500*(25+1) because we added alpha to q
     #print("q_init", q_init)
 
