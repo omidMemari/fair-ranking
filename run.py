@@ -24,9 +24,9 @@ from evaluation import evaluate_model
 
 
 dr = YahooDataReader(None)
-dr.data = pkl.load(open("GermanCredit/german_train_rank_3.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
+dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
 vdr = YahooDataReader(None)
-vdr.data = pkl.load(open("GermanCredit/german_test_rank_3.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
+vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
 
 
 class Namespace:
@@ -54,8 +54,8 @@ vdr_y = np.array(vdr.data[1])
 nc,nn,nf = np.shape(dr_x)
 #print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0, 0.1, 1.0, 10.0, 20.0, 50.0, 100.0, 200, 500, 1000, 2000, 5000, 10000]
-gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4]
+lamdas_list = [0.1, 1.0, 10.0, 20.0, 50.0, 100.0, 500, 1000, 10000]
+gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
 mu = 1e-2 # No need to change?
@@ -126,7 +126,7 @@ def policy_parallel(data): # run policy code in parallel using multiple cores
     args.epochs = 10
     args.progressbar = False
     args.weight_decay = 0.0
-    args.sample_size = 25 #### 10
+    args.sample_size = 10 #### 25
     args.optimizer = "Adam"
     
     model = LinearModel(D=args.input_dim)
@@ -275,7 +275,7 @@ ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl], ["Robust_Fair ($\lambda \in 
 
 ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl,  plt_data_z], ["Robust_Fair ($\lambda \in [0, 10^4]$)",
                       "Policy_Ranking ($\lambda \in [0,100]$ )", 
-                      "Zehlike ($\lambda \in [0, 10^6]$)"], join=True, ranges=[[0.60, 0.85], [0.00, 0.040]], filename="german_robust_policy_zehlike_tradeoff")
+                      "Zehlike ($\lambda \in [0, 10^6]$)"], join=True, ranges=[[0.60, 0.95], [0.00, 0.040]], filename="german_robust_policy_zehlike_tradeoff")
 
 elapsed_adv = end_adv - start_adv
 elapsed_policy = end_policy - end_adv
