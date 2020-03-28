@@ -196,7 +196,8 @@ def evaluate(P, x, u, vvector, group_feat_id):
     nc = len(u)
     for i in range(nc):
         groups = np.array(x[i][:, group_feat_id], dtype=np.int)
-        test_loss = get_fairness_loss(P[i], u[i], vvector, groups) ##############
+        #test_loss = get_fairness_loss(P[i], u[i], vvector, groups) ##############
+        test_loss = get_dp_fairness_loss(P[i], u[i], vvector, groups) ##############
         test_losses.append(test_loss)
         test_ndcg = get_ndcg(P[i], u[i], vvector)
         test_ndcgs.append(test_ndcg)

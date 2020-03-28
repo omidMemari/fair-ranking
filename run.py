@@ -54,8 +54,8 @@ vdr_y = np.array(vdr.data[1])
 nc,nn,nf = np.shape(dr_x)
 #print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.1, 1.0, 10.0, 20.0, 50.0, 100.0, 500, 1000, 10000]
-gammas_list = [1e-2, 1e-1, 1e0, 1e1, 1e2]
+lamdas_list = [10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
+gammas_list = [1e-2, 1e0, 1e2, 1e4, 1e6]
 best_lamda = -1.0
 best_ndcg = -1.0
 mu = 1e-2 # No need to change?
@@ -256,26 +256,29 @@ adv_result = parallel_runs(data_list)
 plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
 end_adv = time.time()
 #################################################################################
-policy_result = policy_learning()
-plt_data_pl = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
+#policy_result = policy_learning()
+#plt_data_pl = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
 end_policy = time.time()
 ##################################################################################
-plt_data_z = zehlike()
+#plt_data_z = zehlike()
 end_zehlike = time.time()
 ###################################################################################
 #plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
 #plt_data_pl = np.array([[0.93654663, 0.02231645], [0.92797832, 0.01746921], [0.84281633, 0.00131007]])
 
 print("plt_data_adv: ", plt_data_adv)
-print("plt_data_pl: ", plt_data_pl)
-print("plt_data_z: ", plt_data_z)
+#print("plt_data_pl: ", plt_data_pl)
+#print("plt_data_z: ", plt_data_z)
 
-ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl], ["Robust_Fair ($\lambda \in [0, 10000]$)",
-                      "Policy_Ranking($\lambda \in [0,100]$ )"], join=True, ranges=[[0.70, 0.95], [0.00, 0.040]], filename= "german_robust_policy_tradeoff")
 
-ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl,  plt_data_z], ["Robust_Fair ($\lambda \in [0, 10^4]$)",
-                      "Policy_Ranking ($\lambda \in [0,100]$ )", 
-                      "Zehlike ($\lambda \in [0, 10^6]$)"], join=True, ranges=[[0.60, 0.95], [0.00, 0.040]], filename="german_robust_policy_zehlike_tradeoff")
+ndcg_vs_disparity_plot([plt_data_adv], ["Robust_Fair ($\lambda \in [0, 10^7]$)"], join=True, ranges=[[0.65, 0.95], [0.00, 0.040]], filename= "german_robust_tradeoff")
+
+#ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl], ["Robust_Fair ($\lambda \in [0, 10000]$)",
+#                      "Policy_Ranking($\lambda \in [0,100]$ )"], join=True, ranges=[[0.70, 0.95], [0.00, 0.040]], filename= "german_robust_policy_tradeoff")
+
+#ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl,  plt_data_z], ["Robust_Fair ($\lambda \in [0, 10^4]$)",
+#                      "Policy_Ranking ($\lambda \in [0,100]$ )", 
+#                      "Zehlike ($\lambda \in [0, 10^6]$)"], join=True, ranges=[[0.60, 0.95], [0.00, 0.040]], filename="german_robust_policy_zehlike_tradeoff")
 
 elapsed_adv = end_adv - start_adv
 elapsed_policy = end_policy - end_adv
