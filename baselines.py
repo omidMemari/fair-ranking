@@ -25,6 +25,10 @@ def get_best_rankmatrix(true_rel_vector):
 #returns DCG value
 def get_DCG(ranking, relevances, vvector):
     N = len(relevances)
+    print("P :", ranking)
+    print("u: ", relevances)
+    print("vvector: ",vvector)
+ 
     return np.matmul(np.matmul(relevances, ranking), vvector.transpose())
 
 

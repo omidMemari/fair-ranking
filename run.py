@@ -24,9 +24,9 @@ from evaluation import evaluate_model
 
 
 dr = YahooDataReader(None)
-dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
+dr.data = pkl.load(open("GermanCredit/german_train_rank_3.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
 vdr = YahooDataReader(None)
-vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
+vdr.data = pkl.load(open("GermanCredit/german_test_rank_3.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
 
 
 class Namespace:
@@ -44,17 +44,18 @@ torch.set_num_threads(args.num_cores)
 args.progressbar = False 
 
 args.group_feat_id = 3
+#args.fairness = False # determines if we want to consider fairness constraint or not
 args.mu = 1e-2
 
-dr_x = np.array(dr.data[0])
-dr_y = np.array(dr.data[1])
-vdr_x = np.array(vdr.data[0])
-vdr_y = np.array(vdr.data[1])
+dr_x = np.array(dr.data[0][:100])
+dr_y = np.array(dr.data[1][:100])
+vdr_x = np.array(vdr.data[0][:100])
+vdr_y = np.array(vdr.data[1][:100])
 
 nc,nn,nf = np.shape(dr_x)
-#print("np.shape(dr_x): ",np.shape(dr_x))
+print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
+lamdas_list = [0.0, 1000, 1000000]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
 gammas_list = [1e-2, 1e0, 1e2, 1e4, 1e6]
 best_lamda = -1.0
 best_ndcg = -1.0
@@ -70,19 +71,25 @@ def train_func(data):
     # prepare cross validation
     k_fold = KFold(n_splits, True, 1)
     cv_ndcg, cv_fair_loss = 0, 0
-    cv_theta = np.zeros(nf)
+    cv_theta, best_theta = np.zeros(nf), np.zeros(nf)
+    best_ndcg = -1
     for fold_idx, (train_set, val_set) in enumerate(k_fold.split(dr_x)):
-        print("fold_idx: ", fold_idx)
-        print("train_set: ", train_set)
-        print("test_set: ", val_set)
+        #print("fold_idx: ", fold_idx)
+        #print("train_set: ", train_set)
+        #print("test_set: ", val_set)
         model = trainAdversarialRanking(dr_x[train_set], dr_y[train_set], args=args)
         results = testAdvarsarialRanking(dr_x[val_set], dr_y[val_set], model, args=args)
+        print("Train with Lambda={} and Gamma={}: ndcg={}, fair_loss={}".format(lamda, gamma, model["ndcg"], model["fair_loss"]))
+        print("Validation with Lambda={} and Gamma={}: ndcg={}, fair_loss={}".format(lamda, gamma, results["ndcg"], results["fair_loss"]))
         cv_ndcg += results["ndcg"]
         cv_fair_loss += results["fair_loss"]
         cv_theta += model["theta"]
+        if results["ndcg"] > best_ndcg:
+            best_ndcg = results["ndcg"]
+            best_theta = model["theta"]
     cv_ndcg, cv_fair_loss, cv_theta = cv_ndcg/n_splits, cv_fair_loss/n_splits, cv_theta/n_splits
  
-    return lamda, gamma, cv_ndcg, cv_fair_loss, cv_theta
+    return lamda, gamma, cv_ndcg, cv_fair_loss, best_theta #, cv_theta
 
 def test_func(data):
 
@@ -93,6 +100,7 @@ def test_func(data):
     args.gamma = gamma
     model = {"theta": theta }
     results = testAdvarsarialRanking(vdr_x ,vdr_y , model, args=args)
+    print("Test with Lambda={} and Gamma={}: ndcg={}, fair_loss={}".format(lamda, gamma, results["ndcg"], results["fair_loss"]))
     return lamda, results["ndcg"], results["fair_loss"]
 
 def parallel_runs(data_list):
@@ -158,41 +166,6 @@ def policy_learning():
     sorted_result = sorted(result_list, key=lambda x: x[0])
     return sorted_result
     
-    
-# def policy_learning():
-#     args.group_feat_id = 3
-#     model_params_list = []
-#     lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
-#     plt_data_pl = np.zeros((len(lambdas_list)+1, 2))
-#     for i, lgroup in enumerate(lambdas_list):
-#         torch.set_num_threads(args.num_cores)
-#         args.lambda_reward = 1.0
-#         args.lambda_ind_fairness = 0.0
-#         args.lambda_group_fairness = lgroup
-
-#         args.lr = 0.001
-#         args.epochs = 10
-#         args.progressbar = False
-#         args.weight_decay = 0.0
-#         args.sample_size = 25
-#         args.optimizer = "Adam"
-
-#         model = LinearModel(D=args.input_dim)
-
-#         model = on_policy_training(dr, vdr, model, args=args)
-#         if i == 0:
-#             results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
-#                                  deterministic=True, args=args, num_sample_per_query=20)
-#             print(results)
-#             plt_data_pl[0] = [results["ndcg"], results["avg_group_asym_disparity"]]
-#         results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
-#                                  deterministic=False, args=args, num_sample_per_query=20)
-#         print(results)
-#         model_params_list.append(model.w.weight.data.tolist()[0])
-#         print("Learnt model for lambda={} has model weights as {}".format(lgroup, model_params_list[-1]))
-#         plt_data_pl[i+1] = [results["ndcg"], results["avg_group_asym_disparity"]]
-#     return plt_data_pl
-
 ##############################################################
 def zehlike():
     args.lr = [0.001]
