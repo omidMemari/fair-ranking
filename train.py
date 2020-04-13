@@ -167,8 +167,8 @@ def trainAdversarialRanking(x, u, args):
     
     elif args.lambda_group_fairness == 0.0: # No Fairness Constraints
         
-        #q_init = np.random.random(nc*nn) # no alpha
-        q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
+        q_init = np.random.random(nc*nn) # no alpha
+        #q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
         bd =[(-1.0,1.0)]*nn*nc 
         optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
         q = np.reshape(optim.x, (-1, nn)) # (500*25,) --> (500, 25)
