@@ -31,15 +31,16 @@ def projectBistochasticADMM(X, Z_init):
     par_mu = 10.0
 
     # tolerance
-    max_iter = 100 
-    tol_abs = 1e-4
-    tol_rel = 1e-2
+    max_iter = 100  
+    tol_abs = 1e-4/100
+    tol_rel = 1e-2/100
 
     # step size init
-    rho = 1.0
+    rho = 1.0 #2.0 #1.0 #########################333
 
     iter = 1
     while True:
+
         A = (X + rho * (Y - W)) / (1.0 + rho)
         # update Z -> column wise projection 
         for i in range(n):

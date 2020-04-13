@@ -3,7 +3,7 @@ def projectSimplex(v):
     nVars = len(v)
     mu = sorted(v, reverse=True) #sort(v,'descend')
     sm = 0
-    row = 0 #### Omid! I don't know!!!
+    row, sm_row = 0, 0 #### Omid! I don't know!!!
     for j in range(nVars):
         sm = sm+mu[j]
         if (mu[j] - (1/(j+1))*(sm-1)) > 0:

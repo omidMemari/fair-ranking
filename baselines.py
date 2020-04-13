@@ -25,9 +25,6 @@ def get_best_rankmatrix(true_rel_vector):
 #returns DCG value
 def get_DCG(ranking, relevances, vvector):
     N = len(relevances)
-    print("P :", ranking)
-    print("u: ", relevances)
-    print("vvector: ",vvector)
  
     return np.matmul(np.matmul(relevances, ranking), vvector.transpose())
 
@@ -36,9 +33,19 @@ def get_ndcg(ranking, relevances, vvector):
     if np.all(relevances == 0):
         return 1.0
     bestr = get_best_rankmatrix(relevances)
+    #print("P :", ranking)
     return get_DCG(ranking, relevances, vvector) / get_DCG(
         bestr, relevances, vvector)
 
+def get_rank_ndcg(ranking, relevances, vvector): ##
+    if np.all(relevances == 0):
+        return 1.0
+    bestr = get_best_rankmatrix(relevances)
+    ranking  = np.array(ranking)
+    bestr_P = get_best_rankmatrix(ranking[:,0]) ##
+    #print("P :", ranking)
+    return get_DCG(bestr_P, relevances, vvector) / get_DCG(
+        bestr, relevances, vvector)
 
 def get_fairness_loss(ranking, relevances, vvector, groups):
     #     print(ranking, relevances, vvector, groups)

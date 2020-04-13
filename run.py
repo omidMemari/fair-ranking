@@ -24,9 +24,9 @@ from evaluation import evaluate_model
 
 
 dr = YahooDataReader(None)
-dr.data = pkl.load(open("GermanCredit/german_train_rank_3.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
+dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
 vdr = YahooDataReader(None)
-vdr.data = pkl.load(open("GermanCredit/german_test_rank_3.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
+vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
 
 
 class Namespace:
@@ -45,32 +45,41 @@ args.progressbar = False
 
 args.group_feat_id = 3
 #args.fairness = False # determines if we want to consider fairness constraint or not
-args.mu = 1e-2
+#args.mu = 1e-2 #################
 
-dr_x = np.array(dr.data[0][:100])
-dr_y = np.array(dr.data[1][:100])
-vdr_x = np.array(vdr.data[0][:100])
-vdr_y = np.array(vdr.data[1][:100])
 
+dr_x_orig = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x_orig = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
+
+nc,nn,nf_orig = np.shape(dr_x_orig)
+v_nc,nn,nf_orig = np.shape(vdr_x_orig)
+dr_x = [[np.outer(np.transpose(dr_x_orig[i,j]), dr_x_orig[i,j]).flatten() for j in range(nn)] for i in range(nc)]
+dr_x = np.array(dr_x)
+vdr_x = [[np.outer(np.transpose(vdr_x_orig[i,j]), vdr_x_orig[i,j]).flatten() for j in range(nn)] for i in range(v_nc)]
+vdr_x = np.array(vdr_x)
 nc,nn,nf = np.shape(dr_x)
+
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0, 1000, 1000000]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
-gammas_list = [1e-2, 1e0, 1e2, 1e4, 1e6]
+lamdas_list = [0.0]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
+gammas_list = [-1e-2]
+mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
-mu = 1e-2 # No need to change?
 
-n_splits = 3
+n_splits = 5
 
 def train_func(data):
     
-    lamda, gamma = data
+    lamda, gamma, mu = data
     args.lambda_group_fairness = lamda
     args.gamma = gamma
+    args.mu = mu
     # prepare cross validation
     k_fold = KFold(n_splits, True, 1)
-    cv_ndcg, cv_fair_loss = 0, 0
+    cv_rank_ndcg, cv_ndcg, cv_fair_loss = 0, 0, 0
     cv_theta, best_theta = np.zeros(nf), np.zeros(nf)
     best_ndcg = -1
     for fold_idx, (train_set, val_set) in enumerate(k_fold.split(dr_x)):
@@ -79,46 +88,53 @@ def train_func(data):
         #print("test_set: ", val_set)
         model = trainAdversarialRanking(dr_x[train_set], dr_y[train_set], args=args)
         results = testAdvarsarialRanking(dr_x[val_set], dr_y[val_set], model, args=args)
-        print("Train with Lambda={} and Gamma={}: ndcg={}, fair_loss={}".format(lamda, gamma, model["ndcg"], model["fair_loss"]))
-        print("Validation with Lambda={} and Gamma={}: ndcg={}, fair_loss={}".format(lamda, gamma, results["ndcg"], results["fair_loss"]))
-        cv_ndcg += results["ndcg"]
+        print("Train with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, model["ndcg"], model["fair_loss"]))
+        print("Validation with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, results["ndcg"], results["fair_loss"]))
+        cv_ndcg += results["ndcg"]##################model["ndcg"]
+        cv_rank_ndcg += results["rank_ndcg"]
         cv_fair_loss += results["fair_loss"]
         cv_theta += model["theta"]
+        ###############################if results["ndcg"] > best_ndcg:
         if results["ndcg"] > best_ndcg:
-            best_ndcg = results["ndcg"]
+            best_ndcg = results["ndcg"]################## result["ndcg"]
             best_theta = model["theta"]
-    cv_ndcg, cv_fair_loss, cv_theta = cv_ndcg/n_splits, cv_fair_loss/n_splits, cv_theta/n_splits
+    cv_rank_ndcg, cv_ndcg, cv_fair_loss, cv_theta = cv_rank_ndcg/n_splits, cv_ndcg/n_splits, cv_fair_loss/n_splits, cv_theta/n_splits
  
-    return lamda, gamma, cv_ndcg, cv_fair_loss, best_theta #, cv_theta
+    return lamda, gamma, mu, cv_rank_ndcg, cv_ndcg, cv_fair_loss, cv_theta##cv_ndcg, cv_fair_loss, cv_theta #best_theta
 
 def test_func(data):
 
     lamda = data[0][0]
     gamma = data[0][1][0]
-    theta = data[0][1][3]
+    mu =    data[0][1][1]
+    theta = data[0][1][5]
     args.lambda_group_fairness = lamda
     args.gamma = gamma
+    args.mu = mu
     model = {"theta": theta }
     results = testAdvarsarialRanking(vdr_x ,vdr_y , model, args=args)
     print("Test with Lambda={} and Gamma={}: ndcg={}, fair_loss={}".format(lamda, gamma, results["ndcg"], results["fair_loss"]))
-    return lamda, results["ndcg"], results["fair_loss"]
+    return results #lamda, results["rank_ndcg"], results["ndcg"], results["fair_loss"]
 
 def parallel_runs(data_list):
     ls = []
     pool = multiprocessing.Pool(processes=args.num_cores)
     #prod_x=partial(prod_xy, y=10) # prod_x has only one argument x (y is fixed to 10)
     result_list = pool.map(train_func, data_list)
-    res = {key : [result_list[idx][1:5]
+    res = {key : [result_list[idx][1:7]
       for idx in range(len(result_list)) if result_list[idx][0]== key]
       for key in set([x[0] for x in result_list])}
-    for key, values in res.items():
+    for key, values in res.items(): ################### check this!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! what is x[1]? cv_rank_ndcg?!
         ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][1]==max([x[1] for x in values])])
-   
+    #print("ls: ", ls)
+    print("for lambda={} best gamma={} and mu={}".format(ls[0][0][0], ls[0][0][1][0], ls[0][0][1][1]))
+    train_result = {"lambda":ls[0][0][0], "gamma":ls[0][0][1][0], "mu":ls[0][0][1][1], "rank_ndcg": ls[0][0][1][2], "ndcg": ls[0][0][1][3]}
     pool = multiprocessing.Pool(processes=args.num_cores)
-    result_list = pool.map(test_func, ls)
-    print(result_list)
-    sorted_result = sorted(result_list, key=lambda x: x[0])
-    return sorted_result
+    test_results = pool.map(test_func, ls)
+    print(test_results)
+    sorted_result = sorted(test_results, key=lambda x: x["rank_ndcg"])
+    return train_result, sorted_result
+    #return np.array(result_list)[:,:4]
 
 #############################################################
 
@@ -134,7 +150,7 @@ def policy_parallel(data): # run policy code in parallel using multiple cores
     args.epochs = 10
     args.progressbar = False
     args.weight_decay = 0.0
-    args.sample_size = 10 #### 25
+    args.sample_size =  25 #10
     args.optimizer = "Adam"
     
     model = LinearModel(D=args.input_dim)
@@ -224,9 +240,10 @@ def ndcg_vs_disparity_plot(plt_data_mats, names, join=False, ranges=None, filena
     
 ###########################################################################################
 start_adv = time.time()
-data_list = list(itertools.product(lamdas_list, gammas_list))
-adv_result = parallel_runs(data_list)
-plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
+data_list = list(itertools.product(lamdas_list, gammas_list, mus_list))
+train_result, adv_result = parallel_runs(data_list)
+#plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
+#plt_data_adv = adv_result
 end_adv = time.time()
 #################################################################################
 #policy_result = policy_learning()
@@ -239,12 +256,15 @@ end_zehlike = time.time()
 #plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
 #plt_data_pl = np.array([[0.93654663, 0.02231645], [0.92797832, 0.01746921], [0.84281633, 0.00131007]])
 
-print("plt_data_adv: ", plt_data_adv)
+print("adv train result: ", train_result)
+print("adv test result: ", adv_result)
+#print("plt_data_adv: ", plt_data_adv)
 #print("plt_data_pl: ", plt_data_pl)
 #print("plt_data_z: ", plt_data_z)
 
 
-ndcg_vs_disparity_plot([plt_data_adv], ["Robust_Fair ($\lambda \in [0, 10^7]$)"], join=True, ranges=[[0.65, 0.95], [0.00, 0.040]], filename= "german_robust_tradeoff")
+
+#ndcg_vs_disparity_plot([plt_data_adv], ["Robust_Fair ($\lambda \in [0, 10^7]$)"], join=True, ranges=[[0.65, 0.95], [0.00, 0.040]], filename= "german_robust_tradeoff")
 
 #ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl], ["Robust_Fair ($\lambda \in [0, 10000]$)",
 #                      "Policy_Ranking($\lambda \in [0,100]$ )"], join=True, ranges=[[0.70, 0.95], [0.00, 0.040]], filename= "german_robust_policy_tradeoff")
