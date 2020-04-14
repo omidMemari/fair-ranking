@@ -169,8 +169,13 @@ def trainAdversarialRanking(x, u, args):
         
         q_init = np.random.random(nc*nn) # no alpha
         #q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
+<<<<<<< HEAD
         bd =[(0.0,1.0)]*nn*nc 
         optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
+=======
+        bd =[(-1.0,1.0)]*nn*nc 
+        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
+>>>>>>> c968097d1a285c20064395133a7f105446b990bf
         q = np.reshape(optim.x, (-1, nn)) # (500*25,) --> (500, 25)
         alpha = np.zeros(nc)
         P = minP(q,f,alpha,vvector(nn), mu)######
