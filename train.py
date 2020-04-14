@@ -11,13 +11,13 @@ last_P = []
 
 
 
-def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness):
+def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_id):
     
     global last_P
     #print("train.py: ranking_q_object")
     nc,nn,nf = np.shape(X)
     X = np.array(X)
-    fc = fairnessConstraint(X)
+    fc = fairnessConstraint(X, group_feat_id)
     
     if lambda_group_fairness == 0: # No Fairness Constraints
         
@@ -95,10 +95,10 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness):
     return obj, g
     
 
-def fairnessConstraint(x): # seems f is okay, f: 500*25
-    g1 = [sum(x[i][:][3]) for i in range(len(x))] # |G_1| for each ranking sample
+def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
+    g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample
     g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample
-    f = [[int(x[i][j][3] == 0)/g0[i] - int(x[i][j][3] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
+    f = [[int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
     f = np.array(f)
     return f
 
@@ -112,7 +112,7 @@ def maxTheta(q, x , u , gamma):
    
     for k in range(0, nf):
         temp = np.array(x)[:,:,k] #500*25*1
-        th[k] = (1  / (gamma * nc) ) * sum([np.dot(q_minus_u[i], temp[i]) for i in range(nc)]) ################3
+        th[k] = (-1  / (gamma * nc) ) * sum([np.dot(q_minus_u[i], temp[i]) for i in range(nc)]) ################3
         
     return th#/sum(th) #####################
     
@@ -149,7 +149,7 @@ def trainAdversarialRanking(x, u, args):
     print("train.py: trainAdversarialRanking")
     gamma = args.gamma
     mu = args.mu
-    f = fairnessConstraint(x)
+    f = fairnessConstraint(x, args.group_feat_id)
     
     if args.lambda_group_fairness > 0.0:
         
@@ -157,7 +157,7 @@ def trainAdversarialRanking(x, u, args):
         bd =[(0.0,1.0)]*nn
         bd.append((None, None))
         bd = bd*nc
-        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, u, gamma, mu, args.lambda_group_fairness), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1e-4, 'ftol' : 100 * np.finfo(float).eps})
+        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
         q_alpha = np.reshape(optim.x, (-1, nn+1)) # (500*26,) --> (500, 26)
         q = np.array([q_alpha[i][:nn] for i in range(len(q_alpha))])
         alpha = np.array([q_alpha[i][nn] for i in range(len(q_alpha))])
@@ -167,10 +167,10 @@ def trainAdversarialRanking(x, u, args):
     
     elif args.lambda_group_fairness == 0.0: # No Fairness Constraints
         
-        #q_init = np.random.random(nc*nn) # no alpha
-        q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
-        bd =[(-1.0,1.0)]*nn*nc 
-        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
+        q_init = np.random.random(nc*nn) # no alpha
+        #q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
+        bd =[(0.0,1.0)]*nn*nc 
+        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
         q = np.reshape(optim.x, (-1, nn)) # (500*25,) --> (500, 25)
         alpha = np.zeros(nc)
         P = minP(q,f,alpha,vvector(nn), mu)######

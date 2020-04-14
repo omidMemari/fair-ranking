@@ -11,13 +11,13 @@ from baselines import *
 
 last_P = []
 
-def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, theta):
+def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id, theta):
     
     global last_P
     #print("test.py: ranking_q_object")
     nc,nn,nf = np.shape(X)
     X = np.array(X)
-    fc = fairnessConstraint(X)
+    fc = fairnessConstraint(X, group_feat_id)
     
     
     if lambda_group_fairness == 0.0: # No Fairness Constraints
@@ -86,34 +86,12 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, theta):
 
     return obj, g
 
-#if group_fairness_evaluation:
-#            rel_mean_g0 = np.mean(rel[group_identities == 0])
-#            rel_mean_g1 = np.mean(rel[group_identities == 1])
-#            # skip for candidate sets when there is no diversity
-#            if (np.sum(group_identities == 0) == 0
-#                    or np.sum(group_identities == 1) == 0
-#                ) or rel_mean_g0 == 0 or rel_mean_g1 == 0:
-#                # print(group_identities, rel)
-#                group_exposure_disparities.append(0.0)
-#                group_asym_disparities.append(0.0)
-#                # if there is only one group
-#            else:
-#                exposure_mean_g0 = np.mean(exposures[group_identities == 0])
-#                exposure_mean_g1 = np.mean(exposures[group_identities == 1])
-#                # print(exposure_mean_g0, exposure_mean_g1)
-#                disparity = exposure_mean_g0 / rel_mean_g0 - exposure_mean_g1 / rel_mean_g1
-#                group_exposure_disparity = disparity**2
-#                sign = +1 if rel_mean_g0 > rel_mean_g1 else -1
-#                one_sided_group_disparity = max([0, sign * disparity])
-#                # print(group_exposure_disparity, exposure_mean_g0,
-#                # exposure_mean_g1, rel, group_identities)
-#                group_exposure_disparities.append(group_exposure_disparity)
-#                group_asym_disparities.append(one_sided_group_disparity)
 
-def fairnessConstraint(x): # seems f is okay, f: 500*25
-    g1 = [sum(x[i][:][3]) for i in range(len(x))] # |G_1| for each ranking sample
+
+def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
+    g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample
     g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample
-    f = [[int(x[i][j][3] == 0)/g0[i] - int(x[i][j][3] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
+    f = [[int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
     f = np.array(f)
     #print("test.py: fairnessConstraint")
     return f
@@ -193,7 +171,7 @@ def testAdvarsarialRanking(x ,u , model, args):
     theta = model["theta"]
     gamma = args.gamma
     mu = args.mu
-    f = fairnessConstraint(x)  
+    f = fairnessConstraint(x, args.group_feat_id)  
     
     if args.lambda_group_fairness > 0.0:
     
@@ -202,19 +180,19 @@ def testAdvarsarialRanking(x ,u , model, args):
         bd.append((None, None))
         bd = bd*nc
 
-        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, gamma, mu, args.lambda_group_fairness, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1e-4})
+        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, gamma, mu, args.lambda_group_fairness, args.group_feat_id, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
 
         q_alpha = np.reshape(optim.x, (-1, nn+1)) # (500*26,) --> (500, 26)
         q = np.array([q_alpha[i][:nn] for i in range(len(q_alpha))])
         alpha = np.array([q_alpha[i][nn] for i in range(len(q_alpha))])
-        f = fairnessConstraint(x)
+        
         
     elif args.lambda_group_fairness == 0.0: # No Fairness Constraints
 
-        #q_init = np.random.random(nc*nn) # no alpha
-        q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
-        bd =[(-1.0,1.0)]*nn*nc
-        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, gamma, mu, args.lambda_group_fairness, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1e-4})
+        q_init = np.random.random(nc*nn) # no alpha
+        #q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
+        bd =[(0.0,1.0)]*nn*nc
+        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, gamma, mu, args.lambda_group_fairness, args.group_feat_id, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
 
         q = np.reshape(optim.x, (-1, nn)) # (500*25,) --> (500, 25)
         alpha = np.zeros(nc)

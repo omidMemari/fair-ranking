@@ -24,15 +24,21 @@ from evaluation import evaluate_model
 
 
 dr = YahooDataReader(None)
-dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*25*29, 500*25*1
+dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*10*29, 500*10*1
 vdr = YahooDataReader(None)
-vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*25*29, 100*25*1
+vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*10*29, 100*10*1
+
+
+#dr = YahooDataReader(None)
+#dr.data = pkl.load(open("adult/adult_train_rank.pkl", "rb")) # (data_X, data_Y) 500*10*109, 500*10*1
+#vdr = YahooDataReader(None)
+#vdr.data = pkl.load(open("adult/adult_test_rank.pkl","rb"))    # (data_X, data_Y) 100*10*109, 100*10*1
 
 
 class Namespace:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate_interval=250, input_dim=29, 
+args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate_interval=250, input_dim=29 #109  
                  eval_rank_limit=1000,
                 fairness_version="asym_disparity", entropy_regularizer=0.0, save_checkpoints=False, num_cores=54,
                 pooling='concat_avg', dropout=0.0, hidden_layer=8, summary_writing=False, 
@@ -43,9 +49,8 @@ args = Namespace(conditional_model=True, gpu_id=None, progressbar=True, evaluate
 torch.set_num_threads(args.num_cores)
 args.progressbar = False 
 
-args.group_feat_id = 3
-#args.fairness = False # determines if we want to consider fairness constraint or not
-#args.mu = 1e-2 #################
+args.group_feat_id = 3   # 3 for german, 5 for adult
+args.sample_size =  10 #25
 
 
 dr_x_orig = np.array(dr.data[0])
@@ -55,16 +60,16 @@ vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
-dr_x = [[np.outer(np.transpose(dr_x_orig[i,j]), dr_x_orig[i,j]).flatten() for j in range(nn)] for i in range(nc)]
+dr_x = dr_x_orig #[[np.outer(np.transpose(dr_x_orig[i,j]), dr_x_orig[i,j]).flatten() for j in range(nn)] for i in range(nc)]
 dr_x = np.array(dr_x)
-vdr_x = [[np.outer(np.transpose(vdr_x_orig[i,j]), vdr_x_orig[i,j]).flatten() for j in range(nn)] for i in range(v_nc)]
+vdr_x = vdr_x_orig #[[np.outer(np.transpose(vdr_x_orig[i,j]), vdr_x_orig[i,j]).flatten() for j in range(nn)] for i in range(v_nc)]
 vdr_x = np.array(vdr_x)
 nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
-gammas_list = [-1e-2]
+lamdas_list = [0.0, 1, 10, 50, 100.0, 500, 1000, 10000]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
+gammas_list = [1e-2]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
@@ -141,7 +146,7 @@ def parallel_runs(data_list):
 def policy_parallel(data): # run policy code in parallel using multiple cores 
     
     lamda = data
-    args.group_feat_id = 3
+    #args.group_feat_id = 3
     model_params_list = []
     args.lambda_group_fairness = lamda
     args.lambda_reward = 1.0
@@ -150,26 +155,25 @@ def policy_parallel(data): # run policy code in parallel using multiple cores
     args.epochs = 10
     args.progressbar = False
     args.weight_decay = 0.0
-    args.sample_size =  25 #10
+    #args.sample_size =  10 #25
     args.optimizer = "Adam"
     
     model = LinearModel(D=args.input_dim)
     model = on_policy_training(dr, vdr, model, args=args)
     if lamda == 0:
         results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
-                             deterministic=True, args=args, num_sample_per_query=20)
+                             deterministic=True, args=args, num_sample_per_query=10) ##20
         print(results)
-        #plt_data_pl = [results["ndcg"], results["avg_group_asym_disparity"]]
+        
     else: # changed by me! for lamda == 0 there were 2 outputs 
         results = evaluate_model(model, vdr, fairness_evaluation=False, group_fairness_evaluation=True, 
-                                 deterministic=False, args=args, num_sample_per_query=20)
+                                 deterministic=False, args=args, num_sample_per_query=10) ##20
         print(results)
         print("Lambda: ", lamda)
         model_params_list.append(model.w.weight.data.tolist()[0])
         print("Learnt model for lambda={} has model weights as {}".format(lamda, model_params_list[-1]))
-        #plt_data_pl = [results["ndcg"], results["avg_group_asym_disparity"]]
     
-    return lamda, results["ndcg"], results["avg_group_asym_disparity"]
+    return lamda, results["ndcg"], results["avg_group_disparity"] #results["avg_group_asym_disparity"]
 
 
 def policy_learning(): 
@@ -203,9 +207,9 @@ def zehlike():
                 group_fairness_evaluation=True,
                 deterministic=True,
                 args=args,
-                num_sample_per_query=100)
-        plt_data_z.append([results["ndcg"], results["avg_group_asym_disparity"]])
-        ndcg_mat[i, 0], disparities_mat[i,0] = results["ndcg"], results["avg_group_asym_disparity"]
+                num_sample_per_query=10)  ## 100
+        plt_data_z.append([results["ndcg"], results["avg_group_disparity"]]) #results["avg_group_asym_disparity"]
+        ndcg_mat[i, 0], disparities_mat[i,0] = results["ndcg"], results["avg_group_disparity"] #results["avg_group_asym_disparity"]
     return np.array(plt_data_z)
 ###############################################################
 
@@ -242,15 +246,15 @@ def ndcg_vs_disparity_plot(plt_data_mats, names, join=False, ranges=None, filena
 start_adv = time.time()
 data_list = list(itertools.product(lamdas_list, gammas_list, mus_list))
 train_result, adv_result = parallel_runs(data_list)
-#plt_data_adv = np.array([[adv_result[i][1], adv_result[i][2]] for i in range(len(adv_result))])
+plt_data_adv = np.array([[adv_result[i]["rank_ndcg"], adv_result[i]["fair_loss"]] for i in range(len(adv_result))])
 #plt_data_adv = adv_result
 end_adv = time.time()
 #################################################################################
-#policy_result = policy_learning()
-#plt_data_pl = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
+policy_result = policy_learning()
+plt_data_pl = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
 end_policy = time.time()
 ##################################################################################
-#plt_data_z = zehlike()
+plt_data_z = zehlike()
 end_zehlike = time.time()
 ###################################################################################
 #plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
@@ -258,20 +262,20 @@ end_zehlike = time.time()
 
 print("adv train result: ", train_result)
 print("adv test result: ", adv_result)
-#print("plt_data_adv: ", plt_data_adv)
-#print("plt_data_pl: ", plt_data_pl)
-#print("plt_data_z: ", plt_data_z)
+print("plt_data_adv: ", plt_data_adv)
+print("plt_data_pl: ", plt_data_pl)
+print("plt_data_z: ", plt_data_z)
 
 
 
-#ndcg_vs_disparity_plot([plt_data_adv], ["Robust_Fair ($\lambda \in [0, 10^7]$)"], join=True, ranges=[[0.65, 0.95], [0.00, 0.040]], filename= "german_robust_tradeoff")
+ndcg_vs_disparity_plot([plt_data_adv], ["Robust_Fair ($\lambda \in [0, 10^7]$)"], join=True, ranges=[[0.65, 0.95], [0.00, 0.040]], filename= "german_robust_tradeoff")
 
-#ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl], ["Robust_Fair ($\lambda \in [0, 10000]$)",
-#                      "Policy_Ranking($\lambda \in [0,100]$ )"], join=True, ranges=[[0.70, 0.95], [0.00, 0.040]], filename= "german_robust_policy_tradeoff")
+ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl], ["Robust_Fair ($\lambda \in [0, 10000]$)",
+                      "Policy_Ranking($\lambda \in [0,100]$ )"], join=True, ranges=[[0.70, 0.95], [0.00, 0.040]], filename= "german_robust_policy_tradeoff")
 
-#ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl,  plt_data_z], ["Robust_Fair ($\lambda \in [0, 10^4]$)",
-#                      "Policy_Ranking ($\lambda \in [0,100]$ )", 
-#                      "Zehlike ($\lambda \in [0, 10^6]$)"], join=True, ranges=[[0.60, 0.95], [0.00, 0.040]], filename="german_robust_policy_zehlike_tradeoff")
+ndcg_vs_disparity_plot([plt_data_adv, plt_data_pl,  plt_data_z], ["Robust_Fair ($\lambda \in [0, 10^4]$)",
+                      "Policy_Ranking ($\lambda \in [0,100]$ )", 
+                      "Zehlike ($\lambda \in [0, 10^6]$)"], join=True, ranges=[[0.60, 0.95], [0.00, 0.040]], filename="german_robust_policy_zehlike_tradeoff")
 
 elapsed_adv = end_adv - start_adv
 elapsed_policy = end_policy - end_adv
