@@ -21,6 +21,7 @@ from YahooDataReader import YahooDataReader
 from models import NNModel, LinearModel
 from evaluation import evaluate_model
 
+filename = "german" # or adult
 
 
 dr = YahooDataReader(None)
@@ -53,10 +54,10 @@ args.group_feat_id = 3   # 3 for german, 5 for adult
 args.sample_size =  10 #25
 
 
-dr_x_orig = np.array(dr.data[0][:100])
-dr_y = np.array(dr.data[1][:100])
-vdr_x_orig = np.array(vdr.data[0][:100])
-vdr_y = np.array(vdr.data[1][:100])
+dr_x_orig = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x_orig = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -68,7 +69,7 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0, 1, 10, 50, 100.0, 500, 1000, 10000]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
+lamdas_list = [0.0, 1, 10, 50, 100.0, 500, 1000, 5000, 10000, 100000, 1000000]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
 gammas_list = [1e-2]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
@@ -84,7 +85,7 @@ def train_func(data):
     args.mu = mu
     # prepare cross validation
     k_fold = KFold(n_splits, True, 1)
-    cv_rank_ndcg, cv_ndcg, cv_fair_loss = 0, 0, 0
+    cv_matching_ndcg, cv_ndcg, cv_fair_loss = 0, 0, 0
     cv_theta, best_theta = np.zeros(nf), np.zeros(nf)
     best_ndcg = -1
     for fold_idx, (train_set, val_set) in enumerate(k_fold.split(dr_x)):
@@ -96,16 +97,16 @@ def train_func(data):
         print("Train with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, model["ndcg"], model["fair_loss"]))
         print("Validation with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, results["ndcg"], results["avg_group_demographic_parity"]))
         cv_ndcg += results["ndcg"]##################model["ndcg"]
-        cv_rank_ndcg += results["rank_ndcg"]
+        cv_matching_ndcg += results["matching_ndcg"]
         cv_fair_loss += results["avg_group_demographic_parity"]
         cv_theta += model["theta"]
         ###############################if results["ndcg"] > best_ndcg:
         if results["ndcg"] > best_ndcg:
             best_ndcg = results["ndcg"]################## result["ndcg"]
             best_theta = model["theta"]
-    cv_rank_ndcg, cv_ndcg, cv_fair_loss, cv_theta = cv_rank_ndcg/n_splits, cv_ndcg/n_splits, cv_fair_loss/n_splits, cv_theta/n_splits
+    cv_matching_ndcg, cv_ndcg, cv_fair_loss, cv_theta = cv_matching_ndcg/n_splits, cv_ndcg/n_splits, cv_fair_loss/n_splits, cv_theta/n_splits
  
-    return lamda, gamma, mu, cv_rank_ndcg, cv_ndcg, cv_fair_loss, cv_theta##cv_ndcg, cv_fair_loss, cv_theta #best_theta
+    return lamda, gamma, mu, cv_matching_ndcg, cv_ndcg, cv_fair_loss, cv_theta##cv_ndcg, cv_fair_loss, cv_theta #best_theta
 
 def test_func(data):
 
@@ -137,7 +138,7 @@ def parallel_runs(data_list):
     pool = multiprocessing.Pool(processes=args.num_cores)
     test_results = pool.map(test_func, ls)
     print(test_results)
-    sorted_result = sorted(test_results, key=lambda x: x["rank_ndcg"])
+    sorted_result = sorted(test_results, key=lambda x: x["matching_ndcg"])
     return train_result, sorted_result
     #return np.array(result_list)[:,:4]
 
@@ -256,12 +257,12 @@ plt_data_adv_dp_matching = np.array([[adv_result[i]["matching_ndcg"], adv_result
 
 end_adv = time.time()
 #################################################################################
-#policy_result = policy_learning()
-#plt_data_pl_dp = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
-#plt_data_pl = np.array([[policy_result[i][1], policy_result[i][3]] for i in range(len(policy_result))])
+policy_result = policy_learning()
+plt_data_pl_dp = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
+plt_data_pl = np.array([[policy_result[i][1], policy_result[i][3]] for i in range(len(policy_result))])
 end_policy = time.time()
 ##################################################################################
-#plt_data_z, plt_data_z_dp = zehlike()
+plt_data_z, plt_data_z_dp = zehlike()
 end_zehlike = time.time()
 ###################################################################################
 #plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
@@ -272,13 +273,13 @@ print("adv test result: ", adv_result)
 print()
 print("plt_data_adv_rank: ", plt_data_adv_rank)
 print("plt_data_adv_matching: ", plt_data_adv_matching)
-#print("plt_data_pl: ", plt_data_pl)
-#print("plt_data_z: ", plt_data_z)
+print("plt_data_pl: ", plt_data_pl)
+print("plt_data_z: ", plt_data_z)
 print()
 print("plt_data_adv_dp_rank: ", plt_data_adv_dp_rank)
 print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching)
-#print("plt_data_pl_dp: ", plt_data_pl_dp)
-#print("plt_data_z_dp: ", plt_data_z_dp)
+print("plt_data_pl_dp: ", plt_data_pl_dp)
+print("plt_data_z_dp: ", plt_data_z_dp)
 
 
 
@@ -298,5 +299,24 @@ print("time for Robust_Fair: ", elapsed_adv)
 print("time for Policy_Learning: ", elapsed_policy)
 print("time for Zehlike: ", elapsed_zehlike)
 
-
+with open("result.txt", "w") as f:
+    print("filename: ", filename, file=f)
+    print("group_feat_id: ", args.group_feat_id, file=f)
+    print("sample_size: ", args.sample_size, file=f)
+    print("k-fold: ", n_splits, file=f)
+    print("lambdas_list: ", lamdas_list, file=f)
+    print("gammas_list: ", gammas_list, file=f)
+    print("mus_list: ", mus_list, file=f)
+    print("adv test result: ", adv_result, file=f)
+    print("plt_data_adv_rank: ", plt_data_adv_rank, file=f)
+    print("plt_data_adv_matching: ", plt_data_adv_matching, file=f)
+    print("plt_data_pl: ", plt_data_pl, file=f)
+    print("plt_data_z: ", plt_data_z, file=f)
+    print("plt_data_adv_dp_rank: ", plt_data_adv_dp_rank, file=f)
+    print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching, file=f)
+    print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
+    print("plt_data_z_dp: ", plt_data_z_dp, file=f)
+    print("time for Robust_Fair: ", elapsed_adv, file=f)
+    print("time for Policy_Learning: ", elapsed_policy, file=f)
+    print("time for Zehlike: ", elapsed_zehlike, file=f)
 
