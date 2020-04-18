@@ -7,7 +7,7 @@ from sklearn import linear_model
 from YahooDataReader import YahooDataReader
 #from models import NNModel, LinearModel
 #from evaluation import evaluate_model
-
+from munkres import Munkres
 import scipy
 
 vvector = lambda N: 1. / np.log2(2 + np.arange(N))
@@ -46,6 +46,22 @@ def get_rank_ndcg(ranking, relevances, vvector): ##
     #print("P :", ranking)
     return get_DCG(bestr_P, relevances, vvector) / get_DCG(
         bestr, relevances, vvector)
+
+def get_matching_ndcg(ranking, relevances, vvector):
+    nn = len(ranking)
+    rank_matrix = np.zeros((nn, nn))
+    m = Munkres()
+    indexes = m.compute(-1 * ranking) # convert min to max 
+    #print_matrix(matrix, msg='Highest profit through this matrix:')
+    total = 0
+    for row, column in indexes:
+        rank_matrix[row][column] = 1 
+        #value = matrix[row][column]
+        #total += value
+        #print(f'({row}, {column}) -> {value}')
+    print("rank_matrix: ", rank_matrix)
+    return get_ndcg(rank_matrix, relevances, vvector)
+    
 
 def get_fairness_loss(ranking, relevances, vvector, groups):
     #     print(ranking, relevances, vvector, groups)

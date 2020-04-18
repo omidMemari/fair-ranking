@@ -176,7 +176,7 @@ def trainAdversarialRanking(x, u, args):
         P = minP(q,f,alpha,vvector(nn), mu)######
         theta = maxTheta(q, x, u, gamma)
         
-    rank_ndcg, ndcg, fair_loss = evaluate(P, x,  u, vvector(nn), args.group_feat_id)
+    matching_ndcg, rank_ndcg, ndcg, dp_fair_loss, fair_loss = evaluate(P, x,  u, vvector(nn), args.group_feat_id)
     print(optim)
     model = {
         "theta": theta,

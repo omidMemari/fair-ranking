@@ -9,6 +9,7 @@ from projectBistochasticADMM import projectBistochasticADMM as Project
 from baselines import *
 
 
+
 last_P = []
 
 def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id, theta):
@@ -142,24 +143,30 @@ def BvN(P, u, vvector):
             #print('permutation matrix:', permutation_matrix)
     return sum(ndcgs)/len(ndcgs)
 
+
 def evaluate(P, x, u, vvector, group_feat_id):
     test_losses = []
+    dp_test_losses = []
     test_ndcgs = []
     test_rank_ndcgs = [] ##
+    test_matching_ndcgs = []
     nc = len(u)
     
     #ranking = sample_ranking(probs, False)
     #ndcg, dcg = compute_dcg(ranking, rel, args.evalk)
     for i in range(nc):
         groups = np.array(x[i][:, group_feat_id], dtype=np.int)
-        #test_loss = get_fairness_loss(P[i], u[i], vvector, groups) ##############
-        test_loss = get_dp_fairness_loss(P[i], u[i], vvector, groups) ##############
+        test_loss = get_fairness_loss(P[i], u[i], vvector, groups) ##############
+        dp_test_loss = get_dp_fairness_loss(P[i], u[i], vvector, groups) ##############
         test_losses.append(test_loss)
+        dp_test_losses.append(dp_test_loss)
         test_ndcg = get_ndcg(P[i], u[i], vvector)
         test_rank_ndcg = get_rank_ndcg(P[i], u[i], vvector) ##
+        test_matching_ndcg = get_matching_ndcg(P[i], u[i], vvector)
         test_ndcgs.append(test_ndcg)
         test_rank_ndcgs.append(test_rank_ndcg) ##
-    return np.mean(test_rank_ndcgs), np.mean(test_ndcgs), np.mean(test_losses)
+        test_matching_ndcgs.append(test_matching_ndcg)
+    return np.mean(test_matching_ndcgs), np.mean(test_rank_ndcgs), np.mean(test_ndcgs), np.mean(dp_test_losses), np.mean(test_losses)
 
 
 def testAdvarsarialRanking(x ,u , model, args):
@@ -201,14 +208,16 @@ def testAdvarsarialRanking(x ,u , model, args):
     U = findUtility(P_optimal, u)
     #print("U is: ", sum(U)/len(U))
     #groups = np.array(x[i][:, group_feat_id], dtype=np.int)
-    rank_ndcg, ndcg, fair_loss = evaluate(P_optimal, x,  u, vvector(nn), args.group_feat_id)
+    matching_ndcg, rank_ndcg, ndcg, dp_fair_loss, fair_loss = evaluate(P_optimal, x,  u, vvector(nn), args.group_feat_id)
     #print("ndcg: ", ndcg)
     #print("fair_loss: ", fair_loss)
     result = {
         "lambda": args.lambda_group_fairness,
         "ndcg": ndcg,
         "rank_ndcg": rank_ndcg,
-        "fair_loss": fair_loss
+        "matching_ndcg": matching_ndcg,
+        "avg_group_asym_disparity": fair_loss,
+        "avg_group_demographic_parity": dp_fair_loss
     }
     return result
     

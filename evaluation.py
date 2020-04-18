@@ -179,6 +179,7 @@ def evaluate_model(model,
     if group_fairness_evaluation:
         group_exposure_disparities = []
         group_asym_disparities = []
+        group_demographic_parity = []
     val_feats, val_rel = validation_data_reader.data
     len_val_set = len(val_feats)
 
@@ -250,11 +251,13 @@ def evaluate_model(model,
                 group_exposure_disparity = disparity**2
                 sign = +1 if rel_mean_g0 >= rel_mean_g1 else -1
                 one_sided_group_disparity = max([0, sign * disparity])
+                demographic_parity = abs(exposure_mean_g0 - exposure_mean_g1)
 
                 # print(group_exposure_disparity, exposure_mean_g0,
                 # exposure_mean_g1, rel, group_identities)
                 group_exposure_disparities.append(group_exposure_disparity)
                 group_asym_disparities.append(one_sided_group_disparity)
+                group_demographic_parity.append(demographic_parity)
 
         if fairness_evaluation:
             all_exposures.extend(exposures)
@@ -355,9 +358,11 @@ def evaluate_model(model,
     if group_fairness_evaluation:
         avg_group_exposure_disparity = np.mean(group_exposure_disparities)
         avg_group_asym_disparity = np.mean(group_asym_disparities)
+        avg_group_demographic_parity = np.mean(group_demographic_parity)
         results.update({
             "avg_group_disparity": avg_group_exposure_disparity,
-            "avg_group_asym_disparity": avg_group_asym_disparity
+            "avg_group_asym_disparity": avg_group_asym_disparity,
+            "avg_group_demographic_parity": avg_group_demographic_parity
         })
     return results
 
