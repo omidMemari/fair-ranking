@@ -63,7 +63,9 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id,
         # x: 500*25*29, theta: 29*1 -> PSI: 500*25 We reduced dimension of features
         print("<q,PSI>: ", sum([np.dot(q[i], PSI[i]) for i in range(nc)])/nc)
         obj = qPv - sum([np.dot(q[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten())
-        fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        
+        ##fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        fPv = fair_loss(X, P, vvector(nn), group_feat_id)
         obj = obj + np.dot(alpha, fPv)
         print("alpha * fPv: ", np.dot(alpha, fPv)/nc)
         print("mu/2*||P||: ",(mu/2) *np.dot(P.flatten(), P.flatten())/nc)
@@ -79,7 +81,7 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id,
         obj = obj + (gamma/2) * np.dot(theta, theta)
 
         gr_q = np.array((Pv - PSI + mu*q)/nc) #####/nc I think we don't need nc!! Gr:500*25,  Gr[i]: 25*1, q[i]: 25*1
-        gr_alpha = np.array((fPv + lambda_group_fairness*alpha)/nc) # fPv: 500*1, alpha: 500*1, Gr_alpha: 500*1, [Gr, Gr_alpha]: 500*26
+        gr_alpha = np.array((fPv + lambda_group_fairness*alpha)/nc) ## /nc # fPv: 500*1, alpha: 500*1, Gr_alpha: 500*1, [Gr, Gr_alpha]: 500*26
         #########################gr_alpha = np.array(fPv/nc) ##########################
         gr_alpha = np.reshape(gr_alpha, (-1, 1)) # convert 1*500 to 500*1
         gr_new = np.array([np.append(gr_q[i] , gr_alpha[i]) for i in range(len(gr_q))])
@@ -88,6 +90,17 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id,
     return obj, g
 
 
+def fair_loss(X, P, v, group_feat_id): # fPv
+    nc,nn,nf = np.shape(X)
+    f = fairnessConstraint(X, group_feat_id)
+    P_matching = np.zeros((nc,nn,nn))
+    for i in range(0, nc):
+        P_matching[i] = get_matching(P[i])
+    Pv = np.matmul(P_matching, vvector(nn))
+    fPv = np.array([np.dot(f[i], Pv[i]) for i in range(nc)])
+    return fPv
+    
+    
 
 def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
     g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample

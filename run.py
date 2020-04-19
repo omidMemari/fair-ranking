@@ -54,10 +54,10 @@ args.group_feat_id = 3   # 3 for german, 5 for adult
 args.sample_size =  10 #25
 
 
-dr_x_orig = np.array(dr.data[0])
-dr_y = np.array(dr.data[1])
-vdr_x_orig = np.array(vdr.data[0])
-vdr_y = np.array(vdr.data[1])
+dr_x_orig = np.array(dr.data[0][:50])
+dr_y = np.array(dr.data[1][:50])
+vdr_x_orig = np.array(vdr.data[0][:50])
+vdr_y = np.array(vdr.data[1][:50])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -69,7 +69,7 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0, 1, 10, 50, 100.0, 500, 1000, 5000, 10000, 100000, 1000000]#[10.0, 100.0, 500, 1000, 10000, 100000, 1000000, 10000000]
+lamdas_list = [0.0,1e-3, 1e-2, 1e-1, 1, 10, 50, 100.0, 1e5, 1e6, 1e7, 1e8, 1e9]
 gammas_list = [1e-2]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
@@ -138,7 +138,7 @@ def parallel_runs(data_list):
     pool = multiprocessing.Pool(processes=args.num_cores)
     test_results = pool.map(test_func, ls)
     print(test_results)
-    sorted_result = sorted(test_results, key=lambda x: x["matching_ndcg"])
+    sorted_result = sorted(test_results, key=lambda x: x["lambda"])
     return train_result, sorted_result
     #return np.array(result_list)[:,:4]
 
@@ -257,12 +257,12 @@ plt_data_adv_dp_matching = np.array([[adv_result[i]["matching_ndcg"], adv_result
 
 end_adv = time.time()
 #################################################################################
-policy_result = policy_learning()
-plt_data_pl_dp = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
-plt_data_pl = np.array([[policy_result[i][1], policy_result[i][3]] for i in range(len(policy_result))])
+#policy_result = policy_learning()
+#plt_data_pl_dp = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
+#plt_data_pl = np.array([[policy_result[i][1], policy_result[i][3]] for i in range(len(policy_result))])
 end_policy = time.time()
 ##################################################################################
-plt_data_z, plt_data_z_dp = zehlike()
+#plt_data_z, plt_data_z_dp = zehlike()
 end_zehlike = time.time()
 ###################################################################################
 #plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
@@ -273,13 +273,13 @@ print("adv test result: ", adv_result)
 print()
 print("plt_data_adv_rank: ", plt_data_adv_rank)
 print("plt_data_adv_matching: ", plt_data_adv_matching)
-print("plt_data_pl: ", plt_data_pl)
-print("plt_data_z: ", plt_data_z)
+#print("plt_data_pl: ", plt_data_pl)
+#print("plt_data_z: ", plt_data_z)
 print()
 print("plt_data_adv_dp_rank: ", plt_data_adv_dp_rank)
 print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching)
-print("plt_data_pl_dp: ", plt_data_pl_dp)
-print("plt_data_z_dp: ", plt_data_z_dp)
+#print("plt_data_pl_dp: ", plt_data_pl_dp)
+#print("plt_data_z_dp: ", plt_data_z_dp)
 
 
 
@@ -310,12 +310,12 @@ with open("result.txt", "w") as f:
     print("adv test result: ", adv_result, file=f)
     print("plt_data_adv_rank: ", plt_data_adv_rank, file=f)
     print("plt_data_adv_matching: ", plt_data_adv_matching, file=f)
-    print("plt_data_pl: ", plt_data_pl, file=f)
-    print("plt_data_z: ", plt_data_z, file=f)
+ #   print("plt_data_pl: ", plt_data_pl, file=f)
+ #   print("plt_data_z: ", plt_data_z, file=f)
     print("plt_data_adv_dp_rank: ", plt_data_adv_dp_rank, file=f)
     print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching, file=f)
-    print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
-    print("plt_data_z_dp: ", plt_data_z_dp, file=f)
+ #   print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
+ #   print("plt_data_z_dp: ", plt_data_z_dp, file=f)
     print("time for Robust_Fair: ", elapsed_adv, file=f)
     print("time for Policy_Learning: ", elapsed_policy, file=f)
     print("time for Zehlike: ", elapsed_zehlike, file=f)

@@ -5,7 +5,7 @@ import math
 from scipy import optimize
 from numpy import linalg
 from projectBistochasticADMM import projectBistochasticADMM as Project
-from test import evaluate
+from test import evaluate, fair_loss
 
 last_P = []
 
@@ -61,7 +61,8 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
         # x: 500*25*29, theta: 29*1 -> PSI: 500*25 We reduced dimension of features
 
         obj = qPv - sum([np.dot(q_minus_u[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten()) 
-        fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        ##fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        fPv = fair_loss(X, P, vvector(nn), group_feat_id)
         obj = obj + np.dot(alpha, fPv) # 500*1
         obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
         obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
