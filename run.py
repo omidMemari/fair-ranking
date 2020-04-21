@@ -54,10 +54,10 @@ args.group_feat_id = 3   # 3 for german, 5 for adult
 args.sample_size =  10 #25
 
 
-dr_x_orig = np.array(dr.data[0][:50])
-dr_y = np.array(dr.data[1][:50])
-vdr_x_orig = np.array(vdr.data[0][:50])
-vdr_y = np.array(vdr.data[1][:50])
+dr_x_orig = np.array(dr.data[0][:100])
+dr_y = np.array(dr.data[1][:100])
+vdr_x_orig = np.array(vdr.data[0][:100])
+vdr_y = np.array(vdr.data[1][:100])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -69,7 +69,7 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0,1e-3, 1e-2, 1e-1, 1, 10, 50, 100.0, 1e5, 1e6, 1e7, 1e8, 1e9]
+lamdas_list = [0.0, 1, 10, 100.0, 1000, 10000, 1e5, 1e6]#[0.0,1e-3, 1e-2, 1e-1, 1, 10, 50, 100.0, 1e5, 1e6, 1e7, 1e8, 1e9]
 gammas_list = [1e-2]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0

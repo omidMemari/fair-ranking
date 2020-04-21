@@ -64,8 +64,8 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id,
         print("<q,PSI>: ", sum([np.dot(q[i], PSI[i]) for i in range(nc)])/nc)
         obj = qPv - sum([np.dot(q[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten())
         
-        ##fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
-        fPv = fair_loss(X, P, vvector(nn), group_feat_id)
+        fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        ##fPv = fair_loss(X, P, vvector(nn), group_feat_id)
         obj = obj + np.dot(alpha, fPv)
         print("alpha * fPv: ", np.dot(alpha, fPv)/nc)
         print("mu/2*||P||: ",(mu/2) *np.dot(P.flatten(), P.flatten())/nc)
@@ -104,8 +104,8 @@ def fair_loss(X, P, v, group_feat_id): # fPv
 
 def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
     g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample
-    g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample
-    f = [[int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
+    g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
+    f = [[max(0, int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i]) for j in range(len(x[i]))] for i in range(len(x))]
     f = np.array(f)
     #print("test.py: fairnessConstraint")
     return f
@@ -197,7 +197,7 @@ def testAdvarsarialRanking(x ,u , model, args):
     
         q_alpha_init = np.random.random(nc*(nn+1)) # 500*(25+1) because we added alpha to q
         bd =[(0.0,1.0)]*nn
-        bd.append((None, None))
+        bd.append((args.lambda_group_fairness, args.lambda_group_fairness))  #bd.append((None, None)) # bounds for alpha
         bd = bd*nc
 
         optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, gamma, mu, args.lambda_group_fairness, args.group_feat_id, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})

@@ -61,8 +61,8 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
         # x: 500*25*29, theta: 29*1 -> PSI: 500*25 We reduced dimension of features
 
         obj = qPv - sum([np.dot(q_minus_u[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten()) 
-        ##fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
-        fPv = fair_loss(X, P, vvector(nn), group_feat_id)
+        fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        ##fPv = fair_loss(X, P, vvector(nn), group_feat_id)
         obj = obj + np.dot(alpha, fPv) # 500*1
         obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
         obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
@@ -156,7 +156,7 @@ def trainAdversarialRanking(x, u, args):
         
         q_alpha_init = np.random.random(nc*(nn+1)) # add alpha to q
         bd =[(0.0,1.0)]*nn
-        bd.append((None, None))
+        bd.append((args.lambda_group_fairness, args.lambda_group_fairness))  #bd.append((None, None)) # bounds for alpha
         bd = bd*nc
         optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
         q_alpha = np.reshape(optim.x, (-1, nn+1)) # (500*26,) --> (500, 26)
