@@ -60,7 +60,7 @@ def get_matching_ndcg(ranking, relevances, vvector):
     nn = len(ranking)
     rank_matrix = np.zeros((nn, nn))
     m = Munkres()
-    indexes = m.compute(-1 * np.log(ranking)) # convert min to max  #### using log of matrix
+    indexes = m.compute(-1 * ranking) # convert min to max  #### using log of matrix
     for row, column in indexes:
         rank_matrix[row][column] = 1 
 

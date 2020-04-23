@@ -67,7 +67,7 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
         obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
         obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
         #  regularization
-        obj = obj + (lambda_group_fairness/2) * np.dot(alpha, alpha)  # alpha[i]??
+        ####################obj = obj + (lambda_group_fairness/2) * np.dot(alpha, alpha)  # alpha[i]??
         obj = obj / nc
         obj = obj + (gamma/2) * np.dot(theta, theta)##########################
         gr_q = np.array((Pv - PSI + mu*q)/nc) ##########/nc I think we don't need nc!! Gr:500*25,  Gr[i]: 25*1, q[i]: 25*1

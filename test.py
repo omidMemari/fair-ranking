@@ -76,7 +76,7 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id,
         obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
         obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
         #  regularization
-        obj = obj + (lambda_group_fairness/2) * np.dot(alpha, alpha)
+        ###################################obj = obj + (lambda_group_fairness/2) * np.dot(alpha, alpha)
         obj = obj / nc
         obj = obj + (gamma/2) * np.dot(theta, theta)
 
@@ -163,19 +163,23 @@ def evaluate(P, x, u, vvector, group_feat_id):
     test_ndcgs = []
     test_rank_ndcgs = [] ##
     test_matching_ndcgs = []
-    nc = len(u)
-    
+    nc,nn,nf = np.shape(x)
     #ranking = sample_ranking(probs, False)
     #ndcg, dcg = compute_dcg(ranking, rel, args.evalk)
+    P_matching = np.zeros((nc,nn,nn))
     for i in range(nc):
+        
+        P_matching[i] = get_matching(P[i])
         groups = np.array(x[i][:, group_feat_id], dtype=np.int)
-        test_loss = get_fairness_loss(P[i], u[i], vvector, groups) ##############
+        test_loss = get_fairness_loss(P_matching[i], u[i], vvector, groups) ##############
+        ##dp_test_loss = get_dp_fairness_loss(P_matching[i], u[i], vvector, groups) ##############
         dp_test_loss = get_dp_fairness_loss(P[i], u[i], vvector, groups) ##############
         test_losses.append(test_loss)
         dp_test_losses.append(dp_test_loss)
         test_ndcg = get_ndcg(P[i], u[i], vvector)
         test_rank_ndcg = get_rank_ndcg(P[i], u[i], vvector) ##
-        test_matching_ndcg = get_matching_ndcg(P[i], u[i], vvector)
+        #####test_matching_ndcg = get_matching_ndcg(P[i], u[i], vvector)
+        test_matching_ndcg = get_ndcg(P_matching[i], u[i], vvector)
         test_ndcgs.append(test_ndcg)
         test_rank_ndcgs.append(test_rank_ndcg) ##
         test_matching_ndcgs.append(test_matching_ndcg)
@@ -226,6 +230,8 @@ def testAdvarsarialRanking(x ,u , model, args):
     #print("fair_loss: ", fair_loss)
     result = {
         "lambda": args.lambda_group_fairness,
+        "gamma": args.gamma,
+        "mu": args.mu,
         "ndcg": ndcg,
         "rank_ndcg": rank_ndcg,
         "matching_ndcg": matching_ndcg,

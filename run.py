@@ -54,10 +54,10 @@ args.group_feat_id = 3   # 3 for german, 5 for adult
 args.sample_size =  10 #25
 
 
-dr_x_orig = np.array(dr.data[0][:100])
-dr_y = np.array(dr.data[1][:100])
-vdr_x_orig = np.array(vdr.data[0][:100])
-vdr_y = np.array(vdr.data[1][:100])
+dr_x_orig = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x_orig = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -69,7 +69,7 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0, 1, 10, 100.0, 1000, 10000, 1e5, 1e6]#[0.0,1e-3, 1e-2, 1e-1, 1, 10, 50, 100.0, 1e5, 1e6, 1e7, 1e8, 1e9]
+lamdas_list = [0.0, 1e-1, 1, 10, 25, 50,75, 1e2, 250, 500, 750, 1e3, 1e4, 1e5, 1e6, 1e7,1e8,1e9]
 gammas_list = [1e-2]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
@@ -179,7 +179,8 @@ def policy_parallel(data): # run policy code in parallel using multiple cores
 
 def policy_learning(): 
     
-    lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+    #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+    lambdas_list = [0.0, 0.1, 1.0, 2.0, 5.0, 7.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
     pool = multiprocessing.Pool(processes=args.num_cores)
     #prod_x=partial(prod_xy, y=10) # prod_x has only one argument x (y is fixed to 10)
     result_list = pool.map(policy_parallel, lambdas_list)
@@ -310,12 +311,12 @@ with open("result.txt", "w") as f:
     print("adv test result: ", adv_result, file=f)
     print("plt_data_adv_rank: ", plt_data_adv_rank, file=f)
     print("plt_data_adv_matching: ", plt_data_adv_matching, file=f)
- #   print("plt_data_pl: ", plt_data_pl, file=f)
+#    print("plt_data_pl: ", plt_data_pl, file=f)
  #   print("plt_data_z: ", plt_data_z, file=f)
     print("plt_data_adv_dp_rank: ", plt_data_adv_dp_rank, file=f)
     print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching, file=f)
- #   print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
- #   print("plt_data_z_dp: ", plt_data_z_dp, file=f)
+#    print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
+#    print("plt_data_z_dp: ", plt_data_z_dp, file=f)
     print("time for Robust_Fair: ", elapsed_adv, file=f)
     print("time for Policy_Learning: ", elapsed_policy, file=f)
     print("time for Zehlike: ", elapsed_zehlike, file=f)
