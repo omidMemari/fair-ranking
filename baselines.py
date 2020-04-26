@@ -1,16 +1,40 @@
 #import torch
 import numpy as np
-
 from itertools import permutations
 from sklearn import linear_model
-
+from projectBistochasticADMM import projectBistochasticADMM as Project
 from YahooDataReader import YahooDataReader
-#from models import NNModel, LinearModel
-#from evaluation import evaluate_model
+from birkhoff import birkhoff_von_neumann_decomposition as decomp
 from munkres import Munkres
+import math
 import scipy
 
 vvector = lambda N: 1. / np.log2(2 + np.arange(N))
+
+def vvector(N):
+
+    v = [1/math.log(1+j, 2) for j in range(1, N+1)] # q: 500*25, v: 25*1
+    return np.array(v)
+
+def fair_loss(X, P, v, group_feat_id): # fPv
+    nc,nn,nf = np.shape(X)
+    f = fairnessConstraint(X, group_feat_id)
+    P_matching = np.zeros((nc,nn,nn))
+    for i in range(0, nc):
+        P_matching[i] = get_matching(P[i])
+    Pv = np.matmul(P_matching, vvector(nn))
+    fPv = np.array([np.dot(f[i], Pv[i]) for i in range(nc)])
+    return fPv
+    
+    
+
+def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
+    g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample
+    g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
+    f = [[max(0, int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i]) for j in range(len(x[i]))] for i in range(len(x))]
+    f = np.array(f)
+    #print("test.py: fairnessConstraint")
+    return f
 
 
 def get_best_rankmatrix(true_rel_vector):
@@ -138,12 +162,78 @@ def get_avg_ndcg_unfairness(dr, predicted_rels, vvector, lmbda,
         test_losses.append(test_loss)
     return np.mean(test_ndcgs), np.mean(test_losses)
 
+def minP(q,f,alpha,v, mu): # P: 500*25*25 #####################
+    # Find optimal P
+    global last_P
+    nc = len(q) #500
+    nn = len(q[0]) #25
+    P = np.zeros((nc,nn,nn))
+    for i in range(0, nc):
+        Pi_init = np.zeros((nn,nn))#last_P[i] #[[1.0/nn for _ in range(nn)] for _ in range(nn)] # checked! initiate with something else? like bipartite code?
+        # run ADMM
+        S = (q[i] + alpha[i]*f[i])
+        R = 1/mu * np.outer(S, np.transpose(v)) # 25*1 multiply by 1*25 should give 25*25 matrix
+        P[i] = Project( R , Pi_init)
+    #last_P = P
+    return P
+
+def evaluate(P, x, u, vvector, group_feat_id):
+    test_losses = []
+    dp_test_losses = []
+    test_ndcgs = []
+    test_rank_ndcgs = [] ##
+    test_matching_ndcgs = []
+    nc,nn,nf = np.shape(x)
+    #ranking = sample_ranking(probs, False)
+    #ndcg, dcg = compute_dcg(ranking, rel, args.evalk)
+    P_matching = np.zeros((nc,nn,nn))
+    for i in range(nc):
+        
+        P_matching[i] = get_matching(P[i])
+        groups = np.array(x[i][:, group_feat_id], dtype=np.int)
+        test_loss = get_fairness_loss(P_matching[i], u[i], vvector, groups) ##############
+        ##dp_test_loss = get_dp_fairness_loss(P_matching[i], u[i], vvector, groups) ##############
+        dp_test_loss = get_dp_fairness_loss(P[i], u[i], vvector, groups) ##############
+        test_losses.append(test_loss)
+        dp_test_losses.append(dp_test_loss)
+        test_ndcg = get_ndcg(P[i], u[i], vvector)
+        test_rank_ndcg = get_rank_ndcg(P[i], u[i], vvector) ##
+        #####test_matching_ndcg = get_matching_ndcg(P[i], u[i], vvector)
+        test_matching_ndcg = get_ndcg(P_matching[i], u[i], vvector)
+        test_ndcgs.append(test_ndcg)
+        test_rank_ndcgs.append(test_rank_ndcg) ##
+        test_matching_ndcgs.append(test_matching_ndcg)
+        
+    result = {
+        #"lambda": lamda,
+        #"gamma": gamma,
+        #"mu": mu,
+        "ndcg": np.mean(test_ndcgs),
+        "matching_ndcg": np.mean(test_matching_ndcgs),
+        "avg_group_asym_disparity": np.mean(test_losses),
+        "avg_group_demographic_parity": np.mean(dp_test_losses)
+    }
+    return result
+
+    #return np.mean(test_matching_ndcgs), np.mean(test_rank_ndcgs), np.mean(test_ndcgs), np.mean(dp_test_losses), np.mean(test_losses)
+
 
 def assign_groups(groups):
     G = [[], []]
     for i in range(len(groups)):
         G[groups[i]].append(i)
     return G
+
+def BvN(P, u, vvector): ###############
+    ndcgs = np.zeros(len(P))
+    for i in range(len(P)):
+        #print("P[i]", P[i])
+        result = decomp(P[i])
+        for coefficient, permutation_matrix in result:
+            ndcgs[i] += coefficient * get_ndcg(permutation_matrix, u[i], vvector)
+            #print('coefficient:', coefficient)
+            #print('permutation matrix:', permutation_matrix)
+    return sum(ndcgs)/len(ndcgs)
 
 
 def fair_rank(relevances, groups, lmda=1):

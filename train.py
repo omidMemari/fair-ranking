@@ -1,19 +1,16 @@
 import numpy as np
-#import matlab.engine
 import scipy.io
 import math
 from scipy import optimize
 from numpy import linalg
-from projectBistochasticADMM import projectBistochasticADMM as Project
-from test import evaluate, fair_loss
+from baselines import *
 
-last_P = []
-
+#last_P = []
 
 
 def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_id):
     
-    global last_P
+    #global last_P
     #print("train.py: ranking_q_object")
     nc,nn,nf = np.shape(X)
     X = np.array(X)
@@ -61,8 +58,8 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
         # x: 500*25*29, theta: 29*1 -> PSI: 500*25 We reduced dimension of features
 
         obj = qPv - sum([np.dot(q_minus_u[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten()) 
-        fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
-        ##fPv = fair_loss(X, P, vvector(nn), group_feat_id)
+        #fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        fPv = fair_loss(X, P, vvector(nn), group_feat_id)
         obj = obj + np.dot(alpha, fPv) # 500*1
         obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
         obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
@@ -86,7 +83,7 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
     print()
     print(' '.join('{:06.5f}'.format(item) for item in q[0]))
     print()
-    print('\n'.join([''.join(['{:06.6f}'.format(item) for item in row]) for row in last_P[0]]))
+    print('\n'.join([''.join(['{:06.6f}'.format(item) for item in row]) for row in P[0]]))
     #print(np.matrix(last_P[0]))
     print()
     print()
@@ -95,13 +92,6 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
 
     return obj, g
     
-
-def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
-    g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample
-    g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample
-    f = [[int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i] for j in range(len(x[i]))] for i in range(len(x))]
-    f = np.array(f)
-    return f
 
 
 def maxTheta(q, x , u , gamma):
@@ -117,35 +107,12 @@ def maxTheta(q, x , u , gamma):
         
     return th#/sum(th) #####################
     
-def minP(q,f,alpha,v, mu): # P: 500*25*25  
-    # Find optimal P
-    global last_P
-    nc = len(q) #500
-    nn = len(q[0]) #25
-    P = np.zeros((nc,nn,nn))
-    #print("train.py: minP")
-    for i in range(0, nc):
-        Pi_init = np.zeros((nn,nn))#last_P[i] #[[1.0/nn for _ in range(nn)] for _ in range(nn)] # checked! initiate with something else? like bipartite code?
-        # run ADMM
-        S = (q[i] + alpha[i]*f[i])
-        R = 1/mu * np.outer(S, np.transpose(v)) # 25*1 multiply by 1*25 should give 25*25 matrix
-        #print("P_init: ", Pi_init)
-        #print("R :", R)
-        P[i] = Project( R , Pi_init)
-        #print(P[i])
-    last_P = P
-    return P
-   
-def vvector(N):
-
-    v = [1/math.log(1+j, 2) for j in range(1, N+1)] # q: 500*25, v: 25*1
-    return np.array(v)
 
        
 def trainAdversarialRanking(x, u, args):
     
     nc,nn,nf = np.shape(x)
-    global last_P
+    #global last_P
     last_P = [[[1.0/nn for _ in range(nn)] for _ in range(nn)] for _ in range(nc)]
     print("train.py: trainAdversarialRanking")
     gamma = args.gamma
@@ -177,14 +144,16 @@ def trainAdversarialRanking(x, u, args):
         P = minP(q,f,alpha,vvector(nn), mu)######
         theta = maxTheta(q, x, u, gamma)
         
-    matching_ndcg, rank_ndcg, ndcg, dp_fair_loss, fair_loss = evaluate(P, x,  u, vvector(nn), args.group_feat_id)
+    ##matching_ndcg, rank_ndcg, ndcg, dp_fair_loss, fair_loss = evaluate(P, x,  u, vvector(nn), args.group_feat_id)
+    result = evaluate(P, x,  u, vvector(nn), args.group_feat_id)
     print(optim)
     model = {
         "theta": theta,
         "q": q,
-        "ndcg": ndcg,
-        "fair_loss": fair_loss
+        "ndcg": result["ndcg"],
+        "matching_ndcg": result["matching_ndcg"],
+        "avg_group_asym_disparity": result["avg_group_asym_disparity"],
+        "avg_group_demographic_parity": result["avg_group_demographic_parity"]
     }
     
     return model    
-    

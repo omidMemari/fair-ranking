@@ -54,10 +54,10 @@ args.group_feat_id = 3   # 3 for german, 5 for adult
 args.sample_size =  10 #25
 
 
-dr_x_orig = np.array(dr.data[0])
-dr_y = np.array(dr.data[1])
-vdr_x_orig = np.array(vdr.data[0])
-vdr_y = np.array(vdr.data[1])
+dr_x_orig = np.array(dr.data[0][:100])
+dr_y = np.array(dr.data[1][:100])
+vdr_x_orig = np.array(vdr.data[0][:100])
+vdr_y = np.array(vdr.data[1][:100])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -69,8 +69,8 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0, 1e-1, 1, 10, 25, 50,75, 1e2, 250, 500, 750, 1e3, 1e4, 1e5, 1e6, 1e7,1e8,1e9]
-gammas_list = [1e-2]
+lamdas_list = [0, 10, 100]#[1, 10, 25, 50,75] #[0.0, 1e-1, 1, 10, 25, 50,75, 1e2, 250, 500, 750, 1e3, 1e4, 1e5, 1e6, 1e7,1e8,1e9]
+gammas_list = [1e-2, 1, 100]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
@@ -85,7 +85,7 @@ def train_func(data):
     args.mu = mu
     # prepare cross validation
     k_fold = KFold(n_splits, True, 1)
-    cv_matching_ndcg, cv_ndcg, cv_fair_loss = 0, 0, 0
+    cv_matching_ndcg, cv_ndcg, cv_dp_fair_loss, cv_fair_loss = 0, 0, 0, 0
     cv_theta, best_theta = np.zeros(nf), np.zeros(nf)
     best_ndcg = -1
     for fold_idx, (train_set, val_set) in enumerate(k_fold.split(dr_x)):
@@ -94,26 +94,38 @@ def train_func(data):
         #print("test_set: ", val_set)
         model = trainAdversarialRanking(dr_x[train_set], dr_y[train_set], args=args)
         results = testAdvarsarialRanking(dr_x[val_set], dr_y[val_set], model, args=args)
-        print("Train with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, model["ndcg"], model["fair_loss"]))
-        print("Validation with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, results["ndcg"], results["avg_group_demographic_parity"]))
+        print("Train with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, model["matching_ndcg"], model["avg_group_demographic_parity"]))
+        print("Validation with Lambda={} and Gamma={} and mu={}: ndcg={}, fair_loss={}".format(lamda, gamma, mu, results["matching_ndcg"], results["avg_group_demographic_parity"]))
         cv_ndcg += results["ndcg"]##################model["ndcg"]
         cv_matching_ndcg += results["matching_ndcg"]
-        cv_fair_loss += results["avg_group_demographic_parity"]
+        cv_dp_fair_loss += results["avg_group_demographic_parity"]
+        cv_fair_loss += results["avg_group_asym_disparity"]
         cv_theta += model["theta"]
         ###############################if results["ndcg"] > best_ndcg:
         if results["ndcg"] > best_ndcg:
             best_ndcg = results["ndcg"]################## result["ndcg"]
             best_theta = model["theta"]
-    cv_matching_ndcg, cv_ndcg, cv_fair_loss, cv_theta = cv_matching_ndcg/n_splits, cv_ndcg/n_splits, cv_fair_loss/n_splits, cv_theta/n_splits
+    cv_matching_ndcg, cv_ndcg, cv_dp_fair_loss, cv_fair_loss, cv_theta = cv_matching_ndcg/n_splits, cv_ndcg/n_splits, cv_dp_fair_loss/n_splits, cv_fair_loss/n_splits, cv_theta/n_splits
+    output = {
+        "lambda": lamda,
+        "gamma": gamma,
+        "mu": mu,
+        "theta": cv_theta,
+        "ndcg": cv_ndcg,
+        "matching_ndcg": cv_matching_ndcg,
+        "avg_group_asym_disparity": cv_fair_loss,
+        "avg_group_demographic_parity": cv_dp_fair_loss
+    }
  
-    return lamda, gamma, mu, cv_matching_ndcg, cv_ndcg, cv_fair_loss, cv_theta##cv_ndcg, cv_fair_loss, cv_theta #best_theta
+    return output
+    #return lamda, gamma, mu, cv_matching_ndcg, cv_ndcg, cv_fair_loss, cv_theta##cv_ndcg, cv_fair_loss, cv_theta #best_theta
 
 def test_func(data):
 
-    lamda = data[0][0]
-    gamma = data[0][1][0]
-    mu =    data[0][1][1]
-    theta = data[0][1][5]
+    lamda = data["lambda"]
+    gamma = data["gamma"]
+    mu =    data["mu"]
+    theta = data["theta"]
     args.lambda_group_fairness = lamda
     args.gamma = gamma
     args.mu = mu
@@ -124,19 +136,33 @@ def test_func(data):
 
 def parallel_runs(data_list):
     ls = []
+    ndcg_crt = "matching_ndcg"
+    fair_crt = "avg_group_demographic_parity"
     pool = multiprocessing.Pool(processes=args.num_cores)
     #prod_x=partial(prod_xy, y=10) # prod_x has only one argument x (y is fixed to 10)
     result_list = pool.map(train_func, data_list)
-    res = {key : [result_list[idx][1:7]
-      for idx in range(len(result_list)) if result_list[idx][0]== key]
-      for key in set([x[0] for x in result_list])}
-    for key, values in res.items(): ################### check this!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! what is x[1]? cv_rank_ndcg?!
-        ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][1]==max([x[1] for x in values])])
-    #print("ls: ", ls)
-    print("for lambda={} best gamma={} and mu={}".format(ls[0][0][0], ls[0][0][1][0], ls[0][0][1][1]))
-    train_result = {"lambda":ls[0][0][0], "gamma":ls[0][0][1][0], "mu":ls[0][0][1][1], "rank_ndcg": ls[0][0][1][2], "ndcg": ls[0][0][1][3]}
+    #res = [result_list[i1] if result_list[i1]["lambda"]==result_list[i2]["lambda"] and result_list[i1][criteria]> result_list[i2][criteria]
+    
+    res = {key : [result_list[idx]
+      for idx in range(len(result_list)) if result_list[idx]["lambda"]== key]
+      for key in set([x["lambda"] for x in result_list])}
+    print("res: ", res)
+    for key, values in res.items():
+        if key == 0:
+            ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][ndcg_crt]==max([x[ndcg_crt] for x in values])])
+        else:
+            ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][fair_crt]==min([x[fair_crt] for x in values])])
+            
+    lls = np.array([ls[i][0][1] for i in range(len(ls))])
+    print("lls: ", lls)
+    #print("ls[0]: ", ls[0])
+    #print("ls[0][0]: ", ls[0][0])
+    #print("ls[0][0][1]: ", ls[0][0][1])
+    #print("for lambda={} best gamma={} and mu={}".format(ls[0][0][1]["lambda"], ls[0][0][1]["gamma"], ls[0][0][1]["mu"]))
+    #train_result = {"lambda":ls[0][0][0], "gamma":ls[0][0][1][0], "mu":ls[0][0][1][1], "rank_ndcg": ls[0][0][1][2], "ndcg": ls[0][0][1][3]}
+    train_result = lls
     pool = multiprocessing.Pool(processes=args.num_cores)
-    test_results = pool.map(test_func, ls)
+    test_results = pool.map(test_func, lls)
     print(test_results)
     sorted_result = sorted(test_results, key=lambda x: x["lambda"])
     return train_result, sorted_result
@@ -250,8 +276,8 @@ def ndcg_vs_disparity_plot(plt_data_mats, names, join=False, ranges=None, filena
 start_adv = time.time()
 data_list = list(itertools.product(lamdas_list, gammas_list, mus_list))
 train_result, adv_result = parallel_runs(data_list)
-plt_data_adv_rank = np.array([[adv_result[i]["rank_ndcg"], adv_result[i]["avg_group_asym_disparity"]] for i in range(len(adv_result))])
-plt_data_adv_dp_rank = np.array([[adv_result[i]["rank_ndcg"], adv_result[i]["avg_group_demographic_parity"]] for i in range(len(adv_result))])
+plt_data_adv = np.array([[adv_result[i]["ndcg"], adv_result[i]["avg_group_asym_disparity"]] for i in range(len(adv_result))])
+plt_data_adv_dp = np.array([[adv_result[i]["ndcg"], adv_result[i]["avg_group_demographic_parity"]] for i in range(len(adv_result))])
 
 plt_data_adv_matching = np.array([[adv_result[i]["matching_ndcg"], adv_result[i]["avg_group_asym_disparity"]] for i in range(len(adv_result))])
 plt_data_adv_dp_matching = np.array([[adv_result[i]["matching_ndcg"], adv_result[i]["avg_group_demographic_parity"]] for i in range(len(adv_result))])
@@ -272,12 +298,12 @@ end_zehlike = time.time()
 print("adv train result: ", train_result)
 print("adv test result: ", adv_result)
 print()
-print("plt_data_adv_rank: ", plt_data_adv_rank)
+print("plt_data_adv: ", plt_data_adv)
 print("plt_data_adv_matching: ", plt_data_adv_matching)
 #print("plt_data_pl: ", plt_data_pl)
 #print("plt_data_z: ", plt_data_z)
 print()
-print("plt_data_adv_dp_rank: ", plt_data_adv_dp_rank)
+print("plt_data_adv_dp: ", plt_data_adv_dp)
 print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching)
 #print("plt_data_pl_dp: ", plt_data_pl_dp)
 #print("plt_data_z_dp: ", plt_data_z_dp)
@@ -309,11 +335,11 @@ with open("result.txt", "w") as f:
     print("gammas_list: ", gammas_list, file=f)
     print("mus_list: ", mus_list, file=f)
     print("adv test result: ", adv_result, file=f)
-    print("plt_data_adv_rank: ", plt_data_adv_rank, file=f)
+    print("plt_data_adv: ", plt_data_adv, file=f)
     print("plt_data_adv_matching: ", plt_data_adv_matching, file=f)
 #    print("plt_data_pl: ", plt_data_pl, file=f)
  #   print("plt_data_z: ", plt_data_z, file=f)
-    print("plt_data_adv_dp_rank: ", plt_data_adv_dp_rank, file=f)
+    print("plt_data_adv_dp: ", plt_data_adv_dp, file=f)
     print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching, file=f)
 #    print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
 #    print("plt_data_z_dp: ", plt_data_z_dp, file=f)
