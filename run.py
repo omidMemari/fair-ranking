@@ -54,10 +54,10 @@ args.group_feat_id = 3   # 3 for german, 5 for adult
 args.sample_size =  10 #25
 
 
-dr_x_orig = np.array(dr.data[0][:100])
-dr_y = np.array(dr.data[1][:100])
-vdr_x_orig = np.array(vdr.data[0][:100])
-vdr_y = np.array(vdr.data[1][:100])
+dr_x_orig = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x_orig = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -69,9 +69,9 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0, 10, 100]#[1, 10, 25, 50,75] #[0.0, 1e-1, 1, 10, 25, 50,75, 1e2, 250, 500, 750, 1e3, 1e4, 1e5, 1e6, 1e7,1e8,1e9]
-gammas_list = [1e-2, 1, 100]
-mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
+lamdas_list = [0.0, 1e-1, 1, 10, 1e2, 250, 500, 1e3, 1e4, 1e6, 1e9]
+gammas_list = [1e-2, 1, 10, 100, 1000]
+mus_list = [1e-2, 1e0, 1e2] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
 
@@ -148,10 +148,8 @@ def parallel_runs(data_list):
       for key in set([x["lambda"] for x in result_list])}
     print("res: ", res)
     for key, values in res.items():
-        if key == 0:
-            ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][ndcg_crt]==max([x[ndcg_crt] for x in values])])
-        else:
-            ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][fair_crt]==min([x[fair_crt] for x in values])])
+        ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][ndcg_crt]==max([x[ndcg_crt] for x in values])])
+        ls.append([(key,values[idx]) for idx in range(len(res[key])) if  values[idx][fair_crt]==min([x[fair_crt] for x in values])])
             
     lls = np.array([ls[i][0][1] for i in range(len(ls))])
     print("lls: ", lls)

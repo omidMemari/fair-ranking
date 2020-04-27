@@ -60,8 +60,8 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id,
         print("<q,PSI>: ", sum([np.dot(q[i], PSI[i]) for i in range(nc)])/nc)
         obj = qPv - sum([np.dot(q[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten())
         
-        #fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
-        fPv = fair_loss(X, P, vvector(nn), group_feat_id)
+        fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
+        #fPv = fair_loss(X, P, vvector(nn), group_feat_id)
         obj = obj + np.dot(alpha, fPv)
         print("alpha * fPv: ", np.dot(alpha, fPv)/nc)
         print("mu/2*||P||: ",(mu/2) *np.dot(P.flatten(), P.flatten())/nc)

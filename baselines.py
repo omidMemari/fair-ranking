@@ -31,7 +31,7 @@ def fair_loss(X, P, v, group_feat_id): # fPv
 def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
     g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample
     g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
-    f = [[max(0, int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i]) for j in range(len(x[i]))] for i in range(len(x))]
+    f = [[max(0, int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i]) for j in range(len(x[i]))] for i in range(len(x))] 
     f = np.array(f)
     #print("test.py: fairnessConstraint")
     return f
@@ -181,7 +181,6 @@ def evaluate(P, x, u, vvector, group_feat_id):
     test_losses = []
     dp_test_losses = []
     test_ndcgs = []
-    test_rank_ndcgs = [] ##
     test_matching_ndcgs = []
     nc,nn,nf = np.shape(x)
     #ranking = sample_ranking(probs, False)
@@ -197,11 +196,9 @@ def evaluate(P, x, u, vvector, group_feat_id):
         test_losses.append(test_loss)
         dp_test_losses.append(dp_test_loss)
         test_ndcg = get_ndcg(P[i], u[i], vvector)
-        test_rank_ndcg = get_rank_ndcg(P[i], u[i], vvector) ##
         #####test_matching_ndcg = get_matching_ndcg(P[i], u[i], vvector)
         test_matching_ndcg = get_ndcg(P_matching[i], u[i], vvector)
         test_ndcgs.append(test_ndcg)
-        test_rank_ndcgs.append(test_rank_ndcg) ##
         test_matching_ndcgs.append(test_matching_ndcg)
         
     result = {
