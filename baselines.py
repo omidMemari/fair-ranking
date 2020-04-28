@@ -28,13 +28,57 @@ def fair_loss(X, P, v, group_feat_id): # fPv
     
     
 
-def fairnessConstraint(x, group_feat_id): # seems f is okay, f: 500*25
-    g1 = [sum(x[i][:][group_feat_id]) for i in range(len(x))] # |G_1| for each ranking sample
-    g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
-    f = [[max(0, int(x[i][j][group_feat_id] == 0)/g0[i] - int(x[i][j][group_feat_id] == 1)/g1[i]) for j in range(len(x[i]))] for i in range(len(x))] 
-    f = np.array(f)
+def fairnessConstraint(x, rel, group_feat_id): # seems f is okay, f: 500*25
+    nc,nn,nf = np.shape(x)
+    rel_mean_g1, rel_mean_g0, asym_disparity = np.zeros(nc), np.zeros(nc), np.zeros((nc,nn))
+    for i in range (nc):
+        rel_mean_g1[i] = np.mean([rel[i][j] for j in range(nn) if x[i][j][group_feat_id] == 1])
+        rel_mean_g0[i] = np.mean([rel[i][j] for j in range(nn) if x[i][j][group_feat_id] == 0])
+    
+    sum_g1 = [np.sum(x[i][:][group_feat_id] == 1) for i in range(len(x))] # |G_1| for each ranking sample
+    #g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
+    sum_g0 = [np.sum(x[i][:][group_feat_id] == 0) for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
+    demographic_parity = [[max(0, int(x[i][j][group_feat_id] == 0)/sum_g0[i] - int(x[i][j][group_feat_id] == 1)/sum_g1[i]) for j in range(len(x[i]))] for i in range(len(x))] 
+    demographic_parity = np.array(demographic_parity)
+    
+    for k in range(nc):
+        if (np.sum(x[k][:][group_feat_id] == 0) == 0
+            or np.sum(x[k][:][group_feat_id] == 1) == 0
+        ) or rel_mean_g0[k] == 0 or rel_mean_g1[k] == 0:
+            asym_disparity[k] = 0.0
+        
+        else:
+            disparity = [max(0, int(x[k][j][group_feat_id] == 0)/(rel_mean_g0[k] * sum_g0[k])
+                              - int(x[k][j][group_feat_id] == 1)/(rel_mean_g1[k] * sum_g1[k]))
+                          for j in range(nn)]
+            #sign = +1 if rel_mean_g0[k] > rel_mean_g1[k] else -1
+            asym_disparity[k] = disparity ####max([0, sign * disparity])
+        
+    
+    asym_disparity = np.array(asym_disparity)
     #print("test.py: fairnessConstraint")
-    return f
+    result = {
+        "demographic_parity": demographic_parity,
+        "asym_disparity": asym_disparity
+    }
+    return result
+
+
+
+def compute_group_disparity(ranking,
+                            rel,
+                            group_identities,
+                            position_biases,
+                            skip_zero=False):
+    exposures = get_exposures(ranking, position_biases)
+    inds_g0 = group_identities == 0
+    inds_g1 = group_identities == 1
+    if skip_zero:
+        inds_g0 = np.logical_and(inds_g0, rel != 0)
+        inds_g1 = np.logical_and(inds_g1, rel != 0)
+    return np.sum(exposures[inds_g0]) / np.sum(rel[inds_g0]) - np.sum(
+        exposures[inds_g1]) / np.sum(rel[inds_g1])
+
 
 
 def get_best_rankmatrix(true_rel_vector):
@@ -164,12 +208,12 @@ def get_avg_ndcg_unfairness(dr, predicted_rels, vvector, lmbda,
 
 def minP(q,f,alpha,v, mu): # P: 500*25*25 #####################
     # Find optimal P
-    global last_P
     nc = len(q) #500
     nn = len(q[0]) #25
     P = np.zeros((nc,nn,nn))
     for i in range(0, nc):
-        Pi_init = np.zeros((nn,nn))#last_P[i] #[[1.0/nn for _ in range(nn)] for _ in range(nn)] # checked! initiate with something else? like bipartite code?
+        Pi_init = np.zeros((nn,nn))
+        #last_P[i] #[[1.0/nn for _ in range(nn)] for _ in range(nn)] # checked! initiate with something else? like bipartite code?
         # run ADMM
         S = (q[i] + alpha[i]*f[i])
         R = 1/mu * np.outer(S, np.transpose(v)) # 25*1 multiply by 1*25 should give 25*25 matrix

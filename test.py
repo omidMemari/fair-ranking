@@ -8,18 +8,19 @@ from baselines import *
 
 #last_P = []
 
-def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id, theta):
+def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id, constraint, theta):
     
     #global last_P
     #print("test.py: ranking_q_object")
     nc,nn,nf = np.shape(X)
     X = np.array(X)
-    fc = fairnessConstraint(X, group_feat_id)
     
     
     if lambda_group_fairness == 0.0: # No Fairness Constraints
         q = np.reshape(q_init, (-1, nn)) # (500*25,) --> (500, 25)
         alpha = np.zeros(nc)
+        fairness = fairnessConstraint(X, q, group_feat_id)
+        fc = fairness[constraint]
         P = minP(q,fc ,alpha ,vvector(nn) ,mu) # P: 500*25*25 ###########################
         Pv = np.matmul(P, vvector(nn)) # Pv: 500*25, P: 500*25*25, v:25*1
         qPv = np.dot(q.flatten(), Pv.flatten())
@@ -45,11 +46,13 @@ def ranking_q_object(q_init, X, gamma, mu, lambda_group_fairness, group_feat_id,
         g = gr_q.flatten()
         print("obj: ", obj)
 
-    elif lambda_group_fairness > 0.0:
+    else:
         
         q_alpha = np.reshape(q_init, (-1, nn+1)) # (500*26,) --> (500, 26)
         q = np.array([q_alpha[i][:nn] for i in range(len(q_alpha))])
         alpha = np.array([q_alpha[i][nn] for i in range(len(q_alpha))])
+        fairness = fairnessConstraint(X, q, group_feat_id)
+        fc = fairness[constraint]
         P = minP(q,fc ,alpha ,vvector(nn) ,mu) # P: 500*25*25 ########################
         Pv = np.matmul(P, vvector(nn)) # Pv: 500*25, P: 500*25*25, v:25*1
         qPv = np.dot(q.flatten(), Pv.flatten())
@@ -97,16 +100,15 @@ def testAdvarsarialRanking(x ,u , model, args):
     theta = model["theta"]
     gamma = args.gamma
     mu = args.mu
-    f = fairnessConstraint(x, args.group_feat_id)  
     
-    if args.lambda_group_fairness > 0.0:
+    if args.lambda_group_fairness != 0.0:
     
         q_alpha_init = np.random.random(nc*(nn+1)) # 500*(25+1) because we added alpha to q
         bd =[(0.0,1.0)]*nn
         bd.append((args.lambda_group_fairness, args.lambda_group_fairness))  #bd.append((None, None)) # bounds for alpha
         bd = bd*nc
 
-        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, gamma, mu, args.lambda_group_fairness, args.group_feat_id, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
+        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, gamma, mu, args.lambda_group_fairness, args.group_feat_id, args.constraint, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
 
         q_alpha = np.reshape(optim.x, (-1, nn+1)) # (500*26,) --> (500, 26)
         q = np.array([q_alpha[i][:nn] for i in range(len(q_alpha))])
@@ -118,12 +120,14 @@ def testAdvarsarialRanking(x ,u , model, args):
         q_init = np.random.random(nc*nn) # no alpha
         #q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
         bd =[(0.0,1.0)]*nn*nc
-        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, gamma, mu, args.lambda_group_fairness, args.group_feat_id, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
+        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, gamma, mu, args.lambda_group_fairness, args.group_feat_id, args.constraint, theta), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
 
         q = np.reshape(optim.x, (-1, nn)) # (500*25,) --> (500, 25)
         alpha = np.zeros(nc)
     
-    P_optimal = minP(q,f,alpha,vvector(nn), mu)
+    fairness = fairnessConstraint(x, q, args.group_feat_id)
+    f = fairness[args.constraint]
+    P_optimal = minP(q, f, alpha, vvector(nn), mu)
     
     #matching_ndcg, rank_ndcg, ndcg, dp_fair_loss, fair_loss = evaluate(P_optimal, x,  u, vvector(nn), args.group_feat_id)
     result = evaluate(P_optimal, x,  u, vvector(nn), args.group_feat_id)

@@ -8,19 +8,21 @@ from baselines import *
 #last_P = []
 
 
-def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_id):
+def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_id, constraint):
     
     #global last_P
     #print("train.py: ranking_q_object")
     nc,nn,nf = np.shape(X)
     X = np.array(X)
-    fc = fairnessConstraint(X, group_feat_id)
+    #fc = fairnessConstraint(X, group_feat_id)
     
     if lambda_group_fairness == 0: # No Fairness Constraints
         
         q = np.reshape(q_init, (-1, nn)) # (500*25,) --> (500, 25)
         theta = maxTheta(q, X, u, gamma) # theta: 29*1 there is another maxTheta in trainAdversarialRanking! I think we don't need this one!
         alpha = np.zeros(nc)
+        fairness = fairnessConstraint(X, u, group_feat_id)
+        fc = fairness[constraint]
         P = minP(q,fc,alpha,vvector(nn), mu) # P: 500*25*25
         Pv = np.matmul(P, vvector(nn)) # Pv: 500*25, P: 500*25*25, v:25*1
         qPv = np.dot(q.flatten(), Pv.flatten())
@@ -47,6 +49,8 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
         q_alpha = np.reshape(q_init, (-1, nn+1)) # (500*26,) --> (500, 26)
         q = np.array([q_alpha[i][:nn] for i in range(len(q_alpha))])
         alpha = np.array([q_alpha[i][nn] for i in range(len(q_alpha))])
+        fairness = fairnessConstraint(X, u, group_feat_id)
+        fc = fairness[constraint]
         #get the optimal tetha & P given Q
         theta = maxTheta(q, X, u, gamma) # theta: 29*1 there is another maxTheta in trainAdversarialRanking! I think we don't need this one!
         P = minP(q,fc,alpha,vvector(nn), mu) # P: 500*25*25
@@ -117,15 +121,17 @@ def trainAdversarialRanking(x, u, args):
     print("train.py: trainAdversarialRanking")
     gamma = args.gamma
     mu = args.mu
-    f = fairnessConstraint(x, args.group_feat_id)
+    #f = fairnessConstraint(x, args.group_feat_id)
+    fairness = fairnessConstraint(x, u, args.group_feat_id)
+    f = fairness[args.constraint]
     
-    if args.lambda_group_fairness > 0.0:
+    if args.lambda_group_fairness != 0.0:
         
         q_alpha_init = np.random.random(nc*(nn+1)) # add alpha to q
         bd =[(0.0,1.0)]*nn
         bd.append((args.lambda_group_fairness, args.lambda_group_fairness))  #bd.append((None, None)) # bounds for alpha
         bd = bd*nc
-        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
+        optim = optimize.minimize(ranking_q_object, x0 = q_alpha_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id, args.constraint), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
         q_alpha = np.reshape(optim.x, (-1, nn+1)) # (500*26,) --> (500, 26)
         q = np.array([q_alpha[i][:nn] for i in range(len(q_alpha))])
         alpha = np.array([q_alpha[i][nn] for i in range(len(q_alpha))])
@@ -138,13 +144,13 @@ def trainAdversarialRanking(x, u, args):
         q_init = np.random.random(nc*nn) # no alpha
         #q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
         bd =[(0.0,1.0)]*nn*nc 
-        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
+        optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id, args.constraint), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})
         q = np.reshape(optim.x, (-1, nn)) # (500*25,) --> (500, 25)
         alpha = np.zeros(nc)
         P = minP(q,f,alpha,vvector(nn), mu)######
         theta = maxTheta(q, x, u, gamma)
         
-    ##matching_ndcg, rank_ndcg, ndcg, dp_fair_loss, fair_loss = evaluate(P, x,  u, vvector(nn), args.group_feat_id)
+
     result = evaluate(P, x,  u, vvector(nn), args.group_feat_id)
     print(optim)
     model = {
