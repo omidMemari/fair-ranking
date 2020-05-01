@@ -52,13 +52,13 @@ args.progressbar = False
 
 args.group_feat_id = 3   # 3 for german, 5 for adult
 args.sample_size =  10 #25
-args.constraint = "asym_disparity" # "demographic_parity"
+args.constraint = "demographic_parity" # "asym_disparity" # 
 
 
-dr_x_orig = np.array(dr.data[0])
-dr_y = np.array(dr.data[1])
-vdr_x_orig = np.array(vdr.data[0])
-vdr_y = np.array(vdr.data[1])
+dr_x_orig = np.array(dr.data[0][:100])
+dr_y = np.array(dr.data[1][:100])
+vdr_x_orig = np.array(vdr.data[0][:100])
+vdr_y = np.array(vdr.data[1][:100])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -70,9 +70,9 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [0.0, 1e-1, 1, 10, 1e2, 250, 500, 1e3, 1e4, 1e6, 1e9]
-gammas_list = [1, 10, 100, 1000, 10000]
-mus_list = [1e-2, 1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
+lamdas_list = [1]#[0.0, 1e-1, 1, 10, 1e2, 250, 500, 1e3, 1e4, 1e6, 1e9]
+gammas_list = [1e-2]#[1, 10, 100, 1000, 10000]
+mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
 
@@ -137,8 +137,8 @@ def test_func(data):
 
 def parallel_runs(data_list):
     ls = []
-    ndcg_crt = "matching_ndcg"
-    fair_crt = "avg_group_asym_disparity" #"avg_group_demographic_parity"
+    ndcg_crt = "ndcg" #"matching_ndcg"
+    fair_crt = "avg_group_demographic_parity" #"avg_group_asym_disparity"
     pool = multiprocessing.Pool(processes=args.num_cores)
     #prod_x=partial(prod_xy, y=10) # prod_x has only one argument x (y is fixed to 10)
     result_list = pool.map(train_func, data_list)

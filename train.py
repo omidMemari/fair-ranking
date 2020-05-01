@@ -32,7 +32,7 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
 
         obj = qPv - sum([np.dot(q_minus_u[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten()) 
         fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
-        #obj = obj + np.dot(alpha, fPv) # 500*1
+        #obj = obj + np.dot(alpha, fPv) # 500*1 ##################
         obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
         obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
         #  regularization
@@ -63,7 +63,7 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
 
         obj = qPv - sum([np.dot(q_minus_u[i], PSI[i]) for i in range(nc)]) ##np.dot(q_minus_u.flatten(), PSI.flatten()) 
         fPv = np.array([np.dot(fc[i], Pv[i]) for i in range(nc)]) #fPv: 500*1, fc:500*25, Pv:500*25
-        #fPv = fair_loss(X, P, vvector(nn), group_feat_id)
+        #fPv = fair_loss(X, u, P, vvector(nn), group_feat_id)
         obj = obj + np.dot(alpha, fPv) # 500*1
         obj = obj - (mu/2) * np.dot(P.flatten(), P.flatten())
         obj = obj + (mu/2) * np.dot(q.flatten(), q.flatten())
@@ -78,10 +78,14 @@ def ranking_q_object(q_init, X, u, gamma, mu, lambda_group_fairness, group_feat_
         gr_new = np.array([np.append(gr_q[i] , gr_alpha[i]) for i in range(len(gr_q))])
         g = gr_new.flatten()
         print("obj: ", obj)
+    
+    #print(np.shape(X[0,:,group_feat_id]))
+    print()    
+    print(' '.join('{:06.5f}'.format(item) for item in X[0,:,group_feat_id]))
     #print()
-    #print("g: ", gr_q[0])
-    #print()
-    #print("theta: ", theta)
+    #print("f: ", fc)
+    print()
+    print("fPv: ", sum(fPv))
     print()
     print(' '.join('{:06.5f}'.format(item) for item in u[0]))
     print()
@@ -141,7 +145,8 @@ def trainAdversarialRanking(x, u, args):
     
     elif args.lambda_group_fairness == 0.0: # No Fairness Constraints
         
-        q_init = np.random.random(nc*nn) # no alpha
+        q_init = -1 * np.reshape(u, (-1, nn))
+        #q_init = np.random.random(nc*nn) # no alpha
         #q_init = np.random.uniform(-1.0, 1.0, size=nc*nn) ##
         bd =[(0.0,1.0)]*nn*nc 
         optim = optimize.minimize(ranking_q_object, x0 = q_init, args=(x, u, gamma, mu, args.lambda_group_fairness, args.group_feat_id, args.constraint), method='L-BFGS-B', jac=True,  bounds=bd, options={'eps': 1, 'ftol' : 100 * np.finfo(float).eps})

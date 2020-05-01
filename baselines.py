@@ -16,9 +16,10 @@ def vvector(N):
     v = [1/math.log(1+j, 2) for j in range(1, N+1)] # q: 500*25, v: 25*1
     return np.array(v)
 
-def fair_loss(X, P, v, group_feat_id): # fPv
+def fair_loss(X, rel, P, v, group_feat_id): # fPv
     nc,nn,nf = np.shape(X)
-    f = fairnessConstraint(X, group_feat_id)
+    fc = fairnessConstraint(X, rel,  group_feat_id)
+    f = fc["demographic_parity"]
     P_matching = np.zeros((nc,nn,nn))
     for i in range(0, nc):
         P_matching[i] = get_matching(P[i])
@@ -31,25 +32,35 @@ def fair_loss(X, P, v, group_feat_id): # fPv
 def fairnessConstraint(x, rel, group_feat_id): # seems f is okay, f: 500*25
     nc,nn,nf = np.shape(x)
     rel_mean_g1, rel_mean_g0, asym_disparity = np.zeros(nc), np.zeros(nc), np.zeros((nc,nn))
+    demographic_parity = np.zeros((nc,nn))
+    asym_disparity = np.zeros((nc,nn))
     for i in range (nc):
-        rel_mean_g1[i] = np.mean([rel[i][j] for j in range(nn) if x[i][j][group_feat_id] == 1])
-        rel_mean_g0[i] = np.mean([rel[i][j] for j in range(nn) if x[i][j][group_feat_id] == 0])
+        rel_mean_g1[i] = np.mean([rel[i, j] for j in range(nn) if x[i, j, group_feat_id] == 1])
+        rel_mean_g0[i] = np.mean([rel[i, j] for j in range(nn) if x[i, j, group_feat_id] == 0])
     
-    sum_g1 = [np.sum(x[i][:][group_feat_id] == 1) for i in range(len(x))] # |G_1| for each ranking sample
+    sum_g1 = [np.sum(x[i, :, group_feat_id] == 1) for i in range(len(x))] # |G_1| for each ranking sample
     #g0 = [len(x[i])-g1[i] for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
-    sum_g0 = [np.sum(x[i][:][group_feat_id] == 0) for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
-    demographic_parity = [[max(0, int(x[i][j][group_feat_id] == 0)/sum_g0[i] - int(x[i][j][group_feat_id] == 1)/sum_g1[i]) for j in range(len(x[i]))] for i in range(len(x))] 
+    sum_g0 = [np.sum(x[i, :, group_feat_id] == 0) for i in range(len(x))] # |G_0| for each ranking sample # Male, priviledged
+    for k in range(nc):
+        if sum_g0[k] == 0 or sum_g1[k] == 0:
+            demographic_parity[k] = [0.0 for _ in range(nn)]
+        
+        else:
+            demographic_parity[k] = [max(0, int(x[k, j, group_feat_id] == 0)/sum_g0[k] - int(x[k, j, group_feat_id] == 1)/sum_g1[k]) for j in range(len(x[k]))]
+    
+        
+    #demographic_parity = [[max(0, int(x[i, j, group_feat_id] == 0)/sum_g0[i] - int(x[i, j, group_feat_id] == 1)/sum_g1[i]) for j in range(len(x[i]))] for i in range(len(x))] 
     demographic_parity = np.array(demographic_parity)
     
     for k in range(nc):
-        if (np.sum(x[k][:][group_feat_id] == 0) == 0
-            or np.sum(x[k][:][group_feat_id] == 1) == 0
+        if (np.sum(x[k, :, group_feat_id] == 0) == 0
+            or np.sum(x[k, :, group_feat_id] == 1) == 0
         ) or rel_mean_g0[k] == 0 or rel_mean_g1[k] == 0:
-            asym_disparity[k] = 0.0
+            asym_disparity[k] = [0.0 for _ in range(nn)]
         
         else:
-            disparity = [max(0, int(x[k][j][group_feat_id] == 0)/(rel_mean_g0[k] * sum_g0[k])
-                              - int(x[k][j][group_feat_id] == 1)/(rel_mean_g1[k] * sum_g1[k]))
+            disparity = [max(0, int(x[k, j, group_feat_id] == 0)/(rel_mean_g0[k] * sum_g0[k])
+                              - int(x[k, j, group_feat_id] == 1)/(rel_mean_g1[k] * sum_g1[k]))
                           for j in range(nn)]
             #sign = +1 if rel_mean_g0[k] > rel_mean_g1[k] else -1
             asym_disparity[k] = disparity ####max([0, sign * disparity])
@@ -169,12 +180,9 @@ def get_dp_fairness_loss(ranking, relevances, vvector, groups):
         np.mean(exposures[groups == 0]),
         np.mean(exposures[groups == 1])
     ]
-    #print(avg_rels, sign, exposures, group_avg_exposures)
-   # loss = max([
-   #     0.0, sign * (group_avg_exposures[0] / avg_rels[0] -
-   #                  group_avg_exposures[1] / avg_rels[1])
-   # ])
-    loss = abs(group_avg_exposures[0] - group_avg_exposures[1])
+    
+    ##loss = abs(group_avg_exposures[0] - group_avg_exposures[1])
+    loss = max(0 , group_avg_exposures[0] - group_avg_exposures[1])
     return loss
 
 def get_avg_fairness_loss(dr, predicted_rels, vvector, lmbda, args):
@@ -212,13 +220,19 @@ def minP(q,f,alpha,v, mu): # P: 500*25*25 #####################
     nn = len(q[0]) #25
     P = np.zeros((nc,nn,nn))
     for i in range(0, nc):
-        Pi_init = np.zeros((nn,nn))
-        #last_P[i] #[[1.0/nn for _ in range(nn)] for _ in range(nn)] # checked! initiate with something else? like bipartite code?
-        # run ADMM
+        #Pi_init = np.zeros((nn,nn))
+        Pi_init = [[1.0/nn for _ in range(nn)] for _ in range(nn)]
         S = (q[i] + alpha[i]*f[i])
         R = 1/mu * np.outer(S, np.transpose(v)) # 25*1 multiply by 1*25 should give 25*25 matrix
+        if i == 0:
+            temp = R
         P[i] = Project( R , Pi_init)
     #last_P = P
+    print("###############R##################")
+    print('\n'.join([' '.join(['{:11.5f}'.format(item) for item in row]) for row in temp]))
+    print()
+    print("alpha: ", alpha[0])
+    print("f: ", f[0])
     return P
 
 def evaluate(P, x, u, vvector, group_feat_id):
@@ -235,8 +249,8 @@ def evaluate(P, x, u, vvector, group_feat_id):
         P_matching[i] = get_matching(P[i])
         groups = np.array(x[i][:, group_feat_id], dtype=np.int)
         test_loss = get_fairness_loss(P_matching[i], u[i], vvector, groups) ##############
-        ##dp_test_loss = get_dp_fairness_loss(P_matching[i], u[i], vvector, groups) ##############
-        dp_test_loss = get_dp_fairness_loss(P[i], u[i], vvector, groups) ##############
+        dp_test_loss = get_dp_fairness_loss(P_matching[i], u[i], vvector, groups) ##############
+        #dp_test_loss = get_dp_fairness_loss(P[i], u[i], vvector, groups) ##############
         test_losses.append(test_loss)
         dp_test_losses.append(dp_test_loss)
         test_ndcg = get_ndcg(P[i], u[i], vvector)

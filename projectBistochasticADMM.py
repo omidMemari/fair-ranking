@@ -9,7 +9,7 @@ def projectBistochasticADMM(X, Z_init):
     #   Z_init : initialize solution
 
     n = len(X)
-
+    max_num = max(map(max, X))
     # initialize
 #    if nargin > 1:  ##############3
 #        Z = Z_init
@@ -20,7 +20,7 @@ def projectBistochasticADMM(X, Z_init):
     
     Z = np.array(Z_init)
     Y = np.array(Z_init)
-    W = np.zeros((n,n))
+    W = np.zeros((n,n)) #[[1.0/n for _ in range(n)] for _ in range(n)]
 
     # history
     Y_old = Y
@@ -32,11 +32,12 @@ def projectBistochasticADMM(X, Z_init):
 
     # tolerance
     max_iter = 100  
-    tol_abs = 1e-4/100
-    tol_rel = 1e-2/100
+    tol_abs = max_num * 1e-4 #1e-4 #1 # 1e-4/100
+    tol_rel = max_num * 1e-2 #100 #1e-2 
 
     # step size init
-    rho = 1.0 #2.0 #1.0 #########################333
+    
+    rho = max_num * 1e-3 #2.0 #1.0 #########################
 
     iter = 1
     while True:
@@ -44,14 +45,15 @@ def projectBistochasticADMM(X, Z_init):
         A = (X + rho * (Y - W)) / (1.0 + rho)
         # update Z -> column wise projection 
         for i in range(n):
-            Z[i,:] = projectSimplex(A[i,:]) #Z(:, i) = projectSimplex(A(:,i))
+            Z[i,:] = projectSimplex(A[i,:]) # P
 
 
         B = (X + rho * (Z + W)) / (1.0 + rho)
         # update U -> row wise projection 
         for i in range(n):
-            Y[:, i] = projectSimplex(B[:, i])
-
+            Y[:, i] = projectSimplex(B[:, i]) # S
+            
+        
         W = W + Z - Y
 
         # stopping criteria
@@ -66,10 +68,13 @@ def projectBistochasticADMM(X, Z_init):
         elif norm_s > (par_mu * norm_r):
             rho = rho / par_decrease
             
-
+        #print("Z: ", Z)
+        
         if iter >= max_iter:
+            #print("**************************************************************************************************8")
             break
         elif norm_r < eps_primal and norm_s < eps_dual:
+            #print("#######################################")
             break
 
         Y_old = Y

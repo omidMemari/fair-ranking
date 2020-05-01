@@ -1,5 +1,5 @@
 def projectSimplex(v):
-#Computest the minimum L2-distance projection of vector v onto the probability simplex
+#Computes the minimum L2-distance projection of vector v onto the probability simplex
     nVars = len(v)
     mu = sorted(v, reverse=True) #sort(v,'descend')
     sm = 0
