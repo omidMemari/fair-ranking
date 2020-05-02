@@ -31,13 +31,17 @@ def projectBistochasticADMM(X, Z_init):
     par_mu = 10.0
 
     # tolerance
-    max_iter = 100  
-    tol_abs = max_num * 1e-4 #1e-4 #1 # 1e-4/100
-    tol_rel = max_num * 1e-2 #100 #1e-2 
-
-    # step size init
-    
-    rho = max_num * 1e-3 #2.0 #1.0 #########################
+    max_iter = 100
+    if max_num <= 1000:
+        tol_abs = 1 #max_num * 1e-4 #1e-4 #1 # 1e-4/100
+        tol_rel = 100 #max_num * 1e-2 #100 #1e-2 
+        # step size init
+        rho =1 # max_num * 1e-3 #2.0 #1.0 #########################
+    else:
+        tol_abs = max_num * 1e-4 #1e-4 #1 # 1e-4/100
+        tol_rel = max_num * 1e-2 #100 #1e-2
+        # step size init
+        rho = max_num * 1e-3 #2.0 #1.0 #########################
 
     iter = 1
     while True:

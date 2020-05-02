@@ -70,8 +70,8 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [1]#[0.0, 1e-1, 1, 10, 1e2, 250, 500, 1e3, 1e4, 1e6, 1e9]
-gammas_list = [1e-2]#[1, 10, 100, 1000, 10000]
+lamdas_list = [1, 2, 5, 7 , 10] #[0.0, 1e-1, 1, 2, 5, 7, 10, 50, 1e2, 250, 500, 1e3, 1e4, 1e6, 1e9]
+gammas_list = [1e-2] #[1, 10, 100]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
