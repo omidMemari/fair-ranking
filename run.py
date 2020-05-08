@@ -25,9 +25,9 @@ filename = "german" # or adult
 
 
 dr = YahooDataReader(None)
-dr.data = pkl.load(open("GermanCredit/german_train_rank.pkl", "rb")) # (data_X, data_Y) 500*10*29, 500*10*1
+dr.data = pkl.load(open("GermanCredit/german_train_rank_3.pkl", "rb")) # (data_X, data_Y) 500*10*29, 500*10*1
 vdr = YahooDataReader(None)
-vdr.data = pkl.load(open("GermanCredit/german_test_rank.pkl","rb"))    # (data_X, data_Y) 100*10*29, 100*10*1
+vdr.data = pkl.load(open("GermanCredit/german_test_rank_3.pkl","rb"))    # (data_X, data_Y) 100*10*29, 100*10*1
 
 
 #dr = YahooDataReader(None)
@@ -55,10 +55,10 @@ args.sample_size =  10 #25
 args.constraint = "demographic_parity" # "asym_disparity" # 
 
 
-dr_x_orig = np.array(dr.data[0][:100])
-dr_y = np.array(dr.data[1][:100])
-vdr_x_orig = np.array(vdr.data[0][:100])
-vdr_y = np.array(vdr.data[1][:100])
+dr_x_orig = np.array(dr.data[0])
+dr_y = np.array(dr.data[1])
+vdr_x_orig = np.array(vdr.data[0])
+vdr_y = np.array(vdr.data[1])
 
 nc,nn,nf_orig = np.shape(dr_x_orig)
 v_nc,nn,nf_orig = np.shape(vdr_x_orig)
@@ -70,8 +70,8 @@ nc,nn,nf = np.shape(dr_x)
 
 print("np.shape(dr_x): ",np.shape(dr_x))
 
-lamdas_list = [1, 2, 5, 7 , 10] #[0.0, 1e-1, 1, 2, 5, 7, 10, 50, 1e2, 250, 500, 1e3, 1e4, 1e6, 1e9]
-gammas_list = [1e-2] #[1, 10, 100]
+lamdas_list = [0.0, 1e6]#[0.0, 1e-1, 1, 2, 5, 7, 10, 50, 1e2, 250, 500, 1e3, 1e4, 1e6, 1e9]
+gammas_list = [1e-2] #, 1, 10, 100]
 mus_list = [1e0] #[1e-2, -1e-2, 1e-1, -1e-1, 1e0, 1e1, -1e1, 1e2, -1e2]
 best_lamda = -1.0
 best_ndcg = -1.0
@@ -137,7 +137,7 @@ def test_func(data):
 
 def parallel_runs(data_list):
     ls = []
-    ndcg_crt = "ndcg" #"matching_ndcg"
+    ndcg_crt = "matching_ndcg" #"ndcg" #"matching_ndcg"
     fair_crt = "avg_group_demographic_parity" #"avg_group_asym_disparity"
     pool = multiprocessing.Pool(processes=args.num_cores)
     #prod_x=partial(prod_xy, y=10) # prod_x has only one argument x (y is fixed to 10)
@@ -205,7 +205,7 @@ def policy_parallel(data): # run policy code in parallel using multiple cores
 def policy_learning(): 
     
     #lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
-    lambdas_list = [0.0, 0.1, 1.0, 2.0, 5.0, 7.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
+    lambdas_list = [0.0, 0.1, 1.0, 10.0, 12.0, 15.0, 20.0, 25.0, 50.0, 100.0]
     pool = multiprocessing.Pool(processes=args.num_cores)
     #prod_x=partial(prod_xy, y=10) # prod_x has only one argument x (y is fixed to 10)
     result_list = pool.map(policy_parallel, lambdas_list)
@@ -283,12 +283,12 @@ plt_data_adv_dp_matching = np.array([[adv_result[i]["matching_ndcg"], adv_result
 
 end_adv = time.time()
 #################################################################################
-#policy_result = policy_learning()
-#plt_data_pl_dp = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
-#plt_data_pl = np.array([[policy_result[i][1], policy_result[i][3]] for i in range(len(policy_result))])
+policy_result = policy_learning()
+plt_data_pl_dp = np.array([[policy_result[i][1], policy_result[i][2]] for i in range(len(policy_result))])
+plt_data_pl = np.array([[policy_result[i][1], policy_result[i][3]] for i in range(len(policy_result))])
 end_policy = time.time()
 ##################################################################################
-#plt_data_z, plt_data_z_dp = zehlike()
+plt_data_z, plt_data_z_dp = zehlike()
 end_zehlike = time.time()
 ###################################################################################
 #plt_data_adv =  np.array([[7.87678189e-01, 4.31883047e-04], [7.87694120e-01, 1.07887506e-04]])
@@ -299,13 +299,13 @@ print("adv test result: ", adv_result)
 print()
 print("plt_data_adv: ", plt_data_adv)
 print("plt_data_adv_matching: ", plt_data_adv_matching)
-#print("plt_data_pl: ", plt_data_pl)
-#print("plt_data_z: ", plt_data_z)
+print("plt_data_pl: ", plt_data_pl)
+print("plt_data_z: ", plt_data_z)
 print()
 print("plt_data_adv_dp: ", plt_data_adv_dp)
 print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching)
-#print("plt_data_pl_dp: ", plt_data_pl_dp)
-#print("plt_data_z_dp: ", plt_data_z_dp)
+print("plt_data_pl_dp: ", plt_data_pl_dp)
+print("plt_data_z_dp: ", plt_data_z_dp)
 
 
 
@@ -336,12 +336,12 @@ with open("result.txt", "w") as f:
     print("adv test result: ", adv_result, file=f)
     print("plt_data_adv: ", plt_data_adv, file=f)
     print("plt_data_adv_matching: ", plt_data_adv_matching, file=f)
-#    print("plt_data_pl: ", plt_data_pl, file=f)
- #   print("plt_data_z: ", plt_data_z, file=f)
+    print("plt_data_pl: ", plt_data_pl, file=f)
+    print("plt_data_z: ", plt_data_z, file=f)
     print("plt_data_adv_dp: ", plt_data_adv_dp, file=f)
     print("plt_data_adv_dp_matching: ", plt_data_adv_dp_matching, file=f)
-#    print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
-#    print("plt_data_z_dp: ", plt_data_z_dp, file=f)
+    print("plt_data_pl_dp: ", plt_data_pl_dp, file=f)
+    print("plt_data_z_dp: ", plt_data_z_dp, file=f)
     print("time for Robust_Fair: ", elapsed_adv, file=f)
     print("time for Policy_Learning: ", elapsed_policy, file=f)
     print("time for Zehlike: ", elapsed_zehlike, file=f)

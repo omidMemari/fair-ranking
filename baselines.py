@@ -171,10 +171,10 @@ def get_dp_fairness_loss(ranking, relevances, vvector, groups):
     #     print(ranking, relevances, vvector, groups)
     if np.all(groups == 0) or np.all(groups == 1):
         return 0.0
-    avg_rels = [np.mean(relevances[groups == i]) for i in range(2)]
-    if avg_rels[0] == 0 or avg_rels[1] == 0:
-        return 0.0
-    sign = +1 if avg_rels[0] >= avg_rels[1] else -1
+    #avg_rels = [np.mean(relevances[groups == i]) for i in range(2)]
+    #if avg_rels[0] == 0 or avg_rels[1] == 0:
+    #    return 0.0
+    #sign = +1 if avg_rels[0] >= avg_rels[1] else -1
     exposures = np.matmul(ranking, vvector)
     group_avg_exposures = [
         np.mean(exposures[groups == 0]),
@@ -182,7 +182,7 @@ def get_dp_fairness_loss(ranking, relevances, vvector, groups):
     ]
     
     ##loss = abs(group_avg_exposures[0] - group_avg_exposures[1])
-    loss = max(0 , group_avg_exposures[0] - group_avg_exposures[1])
+    loss = abs(group_avg_exposures[0] - group_avg_exposures[1])
     return loss
 
 def get_avg_fairness_loss(dr, predicted_rels, vvector, lmbda, args):

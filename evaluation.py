@@ -235,8 +235,17 @@ def evaluate_model(model,
         if group_fairness_evaluation:
             rel_mean_g0 = np.mean(rel[group_identities == 0])
             rel_mean_g1 = np.mean(rel[group_identities == 1])
+            exposure_mean_g0 = np.mean(exposures[group_identities == 0])
+            exposure_mean_g1 = np.mean(exposures[group_identities == 1])
             # skip for candidate sets when there is no diversity
-            if (np.sum(group_identities == 0) == 0
+            if (np.sum(group_identities == 0) == 0  # only for demographic parity
+                    or np.sum(group_identities == 1) == 0):
+                group_demographic_parity.append(0.0)
+            else:
+                demographic_parity = abs(exposure_mean_g0 - exposure_mean_g1)
+                group_demographic_parity.append(demographic_parity)
+
+            if (np.sum(group_identities == 0) == 0  # only for asym disparity
                     or np.sum(group_identities == 1) == 0
                 ) or rel_mean_g0 == 0 or rel_mean_g1 == 0:
                 # print(group_identities, rel)
@@ -244,20 +253,19 @@ def evaluate_model(model,
                 group_asym_disparities.append(0.0)
                 # if there is only one group
             else:
-                exposure_mean_g0 = np.mean(exposures[group_identities == 0])
-                exposure_mean_g1 = np.mean(exposures[group_identities == 1])
-                # print(exposure_mean_g0, exposure_mean_g1)
+                #exposure_mean_g0 = np.mean(exposures[group_identities == 0])
+                #exposure_mean_g1 = np.mean(exposures[group_identities == 1])
                 disparity = exposure_mean_g0 / rel_mean_g0 - exposure_mean_g1 / rel_mean_g1
                 group_exposure_disparity = disparity**2
                 sign = +1 if rel_mean_g0 >= rel_mean_g1 else -1
                 one_sided_group_disparity = max([0, sign * disparity])
-                demographic_parity = abs(exposure_mean_g0 - exposure_mean_g1)
+                #demographic_parity = abs(exposure_mean_g0 - exposure_mean_g1)
 
                 # print(group_exposure_disparity, exposure_mean_g0,
                 # exposure_mean_g1, rel, group_identities)
                 group_exposure_disparities.append(group_exposure_disparity)
                 group_asym_disparities.append(one_sided_group_disparity)
-                group_demographic_parity.append(demographic_parity)
+                #group_demographic_parity.append(demographic_parity)
 
         if fairness_evaluation:
             all_exposures.extend(exposures)

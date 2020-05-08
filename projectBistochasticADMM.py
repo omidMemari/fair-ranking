@@ -1,6 +1,8 @@
 import numpy as np
 from numpy import linalg
 from projectSimplex import projectSimplex
+from sinkhorn_knopp import sinkhorn_knopp as skp
+
 
 def projectBistochasticADMM(X, Z_init):
     #Project to Bistochastic matrix
@@ -10,6 +12,9 @@ def projectBistochasticADMM(X, Z_init):
 
     n = len(X)
     max_num = max(map(max, X))
+    if max_num == 0: # all entries are zero
+        Z = [[1.0/n for _ in range(n)] for _ in range(n)]
+        return Z
     # initialize
 #    if nargin > 1:  ##############3
 #        Z = Z_init
@@ -32,13 +37,13 @@ def projectBistochasticADMM(X, Z_init):
 
     # tolerance
     max_iter = 100
-    if max_num <= 1000:
+    if  max_num <= 1000:
         tol_abs = 1 #max_num * 1e-4 #1e-4 #1 # 1e-4/100
         tol_rel = 100 #max_num * 1e-2 #100 #1e-2 
         # step size init
         rho =1 # max_num * 1e-3 #2.0 #1.0 #########################
     else:
-        tol_abs = max_num * 1e-4 #1e-4 #1 # 1e-4/100
+        tol_abs = max_num * 1e-4  #1e-4 #1 # 1e-4/100
         tol_rel = max_num * 1e-2 #100 #1e-2
         # step size init
         rho = max_num * 1e-3 #2.0 #1.0 #########################
@@ -84,5 +89,11 @@ def projectBistochasticADMM(X, Z_init):
         Y_old = Y
         iter = iter + 1
 
-    #fprintf('# iter : %d\n', iter)
+    col_Z = np.array([sum(Z[:,i]) for i in range(n)])
+    row_Z = np.array([sum(Z[i,:]) for i in range(n)])
+    #if np.any(col_Z > 1.1) or np.any(row_Z > 1.1):
+    #    sk = skp.SinkhornKnopp() # make sure resulting matrix is Bistochastic
+    #    Z = sk.fit(Z)
+    if np.any(np.isnan(Z)):
+        Z = [[1.0/n for _ in range(n)] for _ in range(n)]
     return Z
