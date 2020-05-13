@@ -97,10 +97,10 @@ Y = mat[:, -1]
 num_feats = X.shape[1]
 numX = X.shape[0]
 
-datasize = 500
+datasize = 1000
 cs_size = 10
 split_on_doc = 0.8
-testsize = 100
+testsize = 200
 ratio_relevant = 0.6
 ratios_col = Y * ratio_relevant + (1-Y)*(1-ratio_relevant)
 
