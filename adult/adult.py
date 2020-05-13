@@ -91,6 +91,9 @@ print(mat[:3,:])
 X = mat[:, :-2]
 Y = mat[:, -1]
 
+#X = X[:1000]
+#Y = Y[:1000]
+
 num_feats = X.shape[1]
 numX = X.shape[0]
 
@@ -98,7 +101,7 @@ datasize = 500
 cs_size = 10
 split_on_doc = 0.8
 testsize = 100
-ratio_relevant = 0.4
+ratio_relevant = 0.6
 ratios_col = Y * ratio_relevant + (1-Y)*(1-ratio_relevant)
 
 # generate a candidate set of size 10 everytime
@@ -130,7 +133,8 @@ for i in range(testsize):
     #group_identities_test.append(X[cs_indices,4])
 print(np.shape(data_X))
 
-print(data_Y[0:4])
+print(data_Y[0:10])
+print(Y)
     
 pkl.dump((data_X, data_Y), open("adult_train_rank.pkl", "wb"))
 pkl.dump((test_X, test_Y), open("adult_test_rank.pkl", "wb"))
