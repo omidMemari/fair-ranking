@@ -170,11 +170,11 @@ def record_classifier(h, X, Y, A, ratio):
         db['lambda0']= h.lambdas[1]
         print("----------------------------  mu %.2f , C %.4f----------------------------------" % (h.mu1, h.C))
         print("Test  - predict_err : {:.3f} \t logloss : {:.3f} \t fair_violation : {:.3f} \t q_fair_violation : {:.3f}".format(db['err'], db['logloss'],db['violation'],db['q_violation']))
-    else:
-        db['zo'] = h.expected_error(X, Y, A, ratio)
-        db['err'] = 1 - h.score(X,Y,A,ratio)
-        db['violation'] = h.fairness_violation(X,Y,A,ratio)
-        db['logloss'] = h.expected_logloss(X,Y,A,ratio)
+    elif isinstance(h,EOPP_fair_logloss_classifier):
+        db['zo'] = h.expected_error(X, Y, A)
+        db['err'] = 1 - h.score(X,Y,A)
+        db['violation'] = h.fairness_violation(X,Y,A)
+        db['logloss'] = h.expected_logloss(X,Y,A)
         print("----------------------------  C %.4f----------------------------------" % (h.C))
         print("Test  - predict_err : {:.3f} \t logloss : {:.3f} \t fair_violation : {:.3f} ".format(db['err'], db['logloss'],db['violation']))
     return db
@@ -234,8 +234,7 @@ def cross_validate_c(dataset):
 if __name__ == '__main__':
 
     sampling1 = dict(split = .5 , n = 1, sampling = 'feature', param1 = .5, param2= .5)
-    #datasets = datasets[1:]
-    datasets = ['adult']
+    datasets = datasets[1:]
     for (dataset,sampling) in itertools.product(datasets,samplings):
         run_experiment(dataset,sys.argv[1],**sampling)
     #print(cross_validate_c(sys.argv[1]))
