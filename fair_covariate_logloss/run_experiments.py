@@ -81,7 +81,7 @@ def fit_eoppCovariateLR(sample,c):
 
 h2fit = {'eoppCovariateLR' : fit_eoppCovariateLR,
          'LR' : fit_LR,
-         'covariateLR': fit_eoppCovariateLR,
+         'covariateLR': fit_CovariateLR,
          'IW': fit_IW,
          'eoppLR': fit_eoppLR}
 
@@ -235,6 +235,7 @@ if __name__ == '__main__':
 
     sampling1 = dict(split = .5 , n = 1, sampling = 'feature', param1 = .5, param2= .5)
     #datasets = datasets[1:]
+    datasets = ['adult']
     for (dataset,sampling) in itertools.product(datasets,samplings):
         run_experiment(dataset,sys.argv[1],**sampling)
     #print(cross_validate_c(sys.argv[1]))
